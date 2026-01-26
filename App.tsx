@@ -41,6 +41,9 @@ const Icons = {
   ),
   BellOff: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h9"/><path d="m2 2 20 20"/><path d="M18 8a2 2 0 1 1-4 0"/></svg>
+  ),
+  Wifi: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" x2="12.01" y1="20" y2="20"/></svg>
   )
 };
 
@@ -65,27 +68,44 @@ const App: React.FC = () => {
   const [notificationSound] = useState(() => new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
   const prevPendingCount = useRef(0);
 
+  // تحميل الطلبات لأول مرة
   useEffect(() => {
-    const savedOrders = localStorage.getItem('bel_hana_orders');
-    if (savedOrders) {
-      try {
-        const parsed = JSON.parse(savedOrders);
-        setOrders(parsed);
-        prevPendingCount.current = parsed.filter((o: Order) => o.status === 'pending').length;
-      } catch (e) {
-        console.error("فشل تحميل الطلبات");
+    const loadOrders = () => {
+      const savedOrders = localStorage.getItem('bel_hana_orders');
+      if (savedOrders) {
+        try {
+          const parsed = JSON.parse(savedOrders);
+          setOrders(parsed);
+          prevPendingCount.current = parsed.filter((o: Order) => o.status === 'pending').length;
+        } catch (e) {
+          console.error("فشل تحميل الطلبات");
+        }
       }
-    }
+    };
+    loadOrders();
+
+    // الاستماع للتغييرات في localStorage من تبويبات أخرى (المزامنة الحية)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'bel_hana_orders') {
+        loadOrders();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // حفظ الطلبات وتشغيل التنبيه
   useEffect(() => {
     localStorage.setItem('bel_hana_orders', JSON.stringify(orders));
     localStorage.setItem('bel_hana_sound', String(isSoundEnabled));
 
     const currentPendingCount = orders.filter(o => o.status === 'pending').length;
     
-    if (view === 'admin' && isSoundEnabled && currentPendingCount > prevPendingCount.current) {
-      notificationSound.play().catch(() => {});
+    // تشغيل الصوت فقط إذا زاد عدد الطلبات المعلقة وكنا في لوحة الإدارة
+    if (isSoundEnabled && currentPendingCount > prevPendingCount.current) {
+      if (view === 'admin') {
+        notificationSound.play().catch(() => {});
+      }
     }
     
     prevPendingCount.current = currentPendingCount;
@@ -136,7 +156,11 @@ const App: React.FC = () => {
       notes: orderNote.trim() || undefined
     };
 
-    setOrders(prev => [...prev, newOrder]);
+    const updatedOrders = [...orders, newOrder];
+    setOrders(updatedOrders);
+    // تحديث localStorage يدوياً للتأكد من وصوله فوراً للتبويبات الأخرى
+    localStorage.setItem('bel_hana_orders', JSON.stringify(updatedOrders));
+    
     setCart({});
     setSelectedClinic("");
     setContactInfo("");
@@ -148,9 +172,11 @@ const App: React.FC = () => {
   };
 
   const updateOrderStatus = (id: string, status: Order['status']) => {
-    setOrders(prev => prev.map(order => 
+    const updatedOrders = orders.map(order => 
       order.id === id ? { ...order, status } : order
-    ));
+    );
+    setOrders(updatedOrders);
+    localStorage.setItem('bel_hana_orders', JSON.stringify(updatedOrders));
   };
 
   const handleAdminLogin = () => {
@@ -366,10 +392,15 @@ const App: React.FC = () => {
         {view === 'admin' && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <span className="w-2 h-8 bg-orange-500 rounded-full inline-block"></span>
-                طلبات البوفيه الجارية
-              </h2>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <span className="w-2 h-8 bg-orange-500 rounded-full inline-block"></span>
+                  طلبات البوفيه الجارية
+                </h2>
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 animate-pulse">
+                  <Icons.Wifi /> متصل الآن (يتم التحديث تلقائياً)
+                </div>
+              </div>
               <button 
                 onClick={() => setIsSoundEnabled(!isSoundEnabled)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all font-bold text-sm ${isSoundEnabled ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
@@ -386,7 +417,7 @@ const App: React.FC = () => {
                 {orders.filter(o => o.status === 'pending').length === 0 ? (
                   <div className="bg-white p-12 text-center rounded-2xl border-2 border-dashed border-amber-100 text-amber-200 font-bold italic">لا يوجد طلبات حالياً..</div>
                 ) : (
-                  orders.filter(o => o.status === 'pending').map(order => (
+                  orders.filter(o => o.status === 'pending').sort((a,b) => b.timestamp - a.timestamp).map(order => (
                     <div key={order.id} className="bg-white p-5 rounded-2xl shadow-md border-r-8 border-orange-500 relative overflow-hidden group">
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -480,7 +511,7 @@ const App: React.FC = () => {
 
       {showOrderSuccess && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-amber-900 text-white px-8 py-6 rounded-3xl shadow-2xl z-[100] animate-bounce font-black border-4 border-orange-500 text-center flex flex-col items-center gap-3">
-          <div className="w-16 h-16 bg-white rounded-2xl p-1 shadow-inner">
+          <div className="w-16 h-16 bg-white rounded-2xl p-1 shadow-inner border-2 border-amber-100">
              <img src={LOGO_URL} className="w-full h-full object-contain" alt="" />
           </div>
           <div>
