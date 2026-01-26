@@ -4,7 +4,6 @@ import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADMIN_WHATSAPP } from './consta
 import { Drink, Order, OrderItem, CLINICS, DoctorAd } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
-// معرف فريد جداً لضمان استقلالية البيانات
 const GLOBAL_SYNC_ID = "bal_hana_v7_final_secure_sync_2025"; 
 const API_URL = `https://kvdb.io/6E3qV3pE9yU5vH7N9w4G9x/${GLOBAL_SYNC_ID}`;
 
@@ -29,6 +28,9 @@ const App: React.FC = () => {
   const [orderNote, setOrderNote] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassInput, setAdminPassInput] = useState("");
+  const [loginError, setLoginError] = useState(false);
   const [lastOrderLink, setLastOrderLink] = useState("");
   const [lastSyncTime, setLastSyncTime] = useState("-");
   const [adminFilter, setAdminFilter] = useState<'pending' | 'completed' | 'all'>('pending');
@@ -36,7 +38,6 @@ const App: React.FC = () => {
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
 
-  // مزامنة البيانات
   const fetchOrders = async () => {
     try {
       const res = await fetch(`${API_URL}?cb=${Date.now()}`, { cache: 'no-store' });
@@ -55,7 +56,7 @@ const App: React.FC = () => {
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify(data.slice(-50)), // حفظ آخر 50 طلب فقط لسرعة الأداء
+        body: JSON.stringify(data.slice(-50)),
         headers: { 'Content-Type': 'application/json' }
       });
       return res.ok;
@@ -68,7 +69,6 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [view]);
 
-  // صوت التنبيه للمسؤول
   useEffect(() => {
     if (view === 'admin' && orders.length > 0) {
       const pendingIds = orders.filter(o => o.status === 'pending').map(o => o.id);
@@ -83,28 +83,21 @@ const App: React.FC = () => {
   const cartTotalPrice = useMemo(() => 
     Object.values(cart).reduce((sum, item) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
-  // إضافة وتحديث عناصر السلة
   const updateCart = (drink: Drink, delta: number) => {
     setCart(prev => {
       const existing = prev[drink.id];
       const newQuantity = (existing ? existing.quantity : 0) + delta;
-      
       if (newQuantity <= 0) {
         const next = { ...prev };
         delete next[drink.id];
         return next;
       }
-      
-      return {
-        ...prev,
-        [drink.id]: { drink, quantity: newQuantity }
-      };
+      return { ...prev, [drink.id]: { drink, quantity: newQuantity } };
     });
   };
 
   const handlePlaceOrder = async () => {
     if (!selectedClinic || !contactInfo.trim()) { alert("يرجى اختيار العيادة والاسم"); return; }
-    
     setIsPlacingOrder(true);
     const newOrder: Order = {
       id: Math.random().toString(36).substr(2, 5).toUpperCase(),
@@ -119,13 +112,8 @@ const App: React.FC = () => {
 
     const currentOrders = await fetchOrders() || orders;
     const updated = [...currentOrders, newOrder];
-    
     const saved = await saveOrders(updated);
-    if (!saved) {
-      alert("عذراً، فشل الاتصال بالنظام. سنحاول الإرسال عبر الواتساب فقط.");
-    }
-
-    // تجهيز رابط الواتساب
+    
     const msg = encodeURIComponent(
       `☕ *طلب مشروبات من تطبيق بالهنا*\n` +
       `--------------------------\n` +
@@ -136,7 +124,6 @@ const App: React.FC = () => {
       (newOrder.notes ? `📝 *ملاحظات:* ${newOrder.notes}` : '')
     );
     setLastOrderLink(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`);
-    
     setCart({});
     setIsPlacingOrder(false);
     setShowSuccessModal(true);
@@ -150,10 +137,21 @@ const App: React.FC = () => {
   };
 
   const clearHistory = async () => {
-    if (confirm("هل تريد مسح جميع الطلبات المنتهية لتسريع النظام؟")) {
+    if (confirm("هل تريد مسح جميع الطلبات المنتهية؟")) {
       const active = orders.filter(o => o.status === 'pending');
       setOrders(active);
       await saveOrders(active);
+    }
+  };
+
+  const handleAdminLogin = () => {
+    if (adminPassInput === ADMIN_PASSWORD) {
+      setView('admin');
+      setShowAdminLogin(false);
+      setAdminPassInput("");
+      setLoginError(false);
+    } else {
+      setLoginError(true);
     }
   };
 
@@ -169,7 +167,7 @@ const App: React.FC = () => {
           <h1 className="font-black text-xl tracking-tight">بالهنا</h1>
         </div>
         <button 
-          onClick={() => view === 'admin' ? setView('menu') : (prompt("كلمة السر") === ADMIN_PASSWORD && setView('admin'))}
+          onClick={() => view === 'admin' ? setView('menu') : setShowAdminLogin(true)}
           className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-[11px] font-bold border border-white/5 transition-all"
         >
           {view === 'admin' ? 'الرجوع للمنيو' : 'لوحة الإدارة'}
@@ -318,6 +316,32 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* مودال تسجيل دخول الإدارة */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-amber-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white p-8 rounded-[2.5rem] w-full max-w-sm text-center shadow-2xl space-y-6">
+            <div className="text-4xl">🔐</div>
+            <h2 className="text-xl font-black">الدخول للمسؤول</h2>
+            <div className="space-y-2">
+              <input 
+                type="password" 
+                value={adminPassInput}
+                onChange={e => { setAdminPassInput(e.target.value); setLoginError(false); }}
+                onKeyPress={e => e.key === 'Enter' && handleAdminLogin()}
+                autoFocus
+                placeholder="كلمة المرور"
+                className={`w-full p-4 rounded-2xl bg-amber-50 border-2 font-black text-center text-xl outline-none transition-all ${loginError ? 'border-red-500 animate-shake' : 'border-transparent focus:border-orange-500'}`}
+              />
+              {loginError && <p className="text-xs text-red-500 font-bold">كلمة المرور غير صحيحة!</p>}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button onClick={handleAdminLogin} className="bg-amber-950 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-transform">دخول</button>
+              <button onClick={() => { setShowAdminLogin(false); setAdminPassInput(""); setLoginError(false); }} className="text-gray-400 font-bold text-sm py-2">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {view === 'menu' && Object.keys(cart).length > 0 && (
         <div className="fixed bottom-6 inset-x-4 max-w-lg mx-auto z-[60] animate-in slide-in-from-bottom-10 duration-500">
           <button onClick={() => setView('cart')} className="w-full bg-amber-950 text-white p-5 rounded-3xl shadow-2xl flex justify-between items-center border-b-4 border-orange-600 active:scale-95 transition-transform">
@@ -364,9 +388,11 @@ const App: React.FC = () => {
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slide-in-bottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
         .animate-in { animation-fill-mode: forwards; }
         .fade-in { animation-name: fade-in; }
         .slide-in-from-bottom-4 { animation-name: slide-in-bottom; }
+        .animate-shake { animation: shake 0.2s ease-in-out infinite; }
       `}</style>
     </div>
   );
