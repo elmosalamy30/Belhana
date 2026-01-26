@@ -12,13 +12,16 @@ const Icons = {
   User: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   WhatsApp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
   Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
-  MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+  MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
 
+type ViewState = 'menu' | 'cart' | 'admin';
+
 const App: React.FC = () => {
-  const [view, setView] = useState<'menu' | 'cart' | 'admin'>('menu');
+  const [view, setViewInternal] = useState<ViewState>('menu');
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [selectedClinic, setSelectedClinic] = useState("");
@@ -37,6 +40,34 @@ const App: React.FC = () => {
   
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
+
+  // Function to change view and push to history
+  const setView = (newView: ViewState, replace: boolean = false) => {
+    if (newView === view) return;
+    if (replace) {
+      window.history.replaceState({ view: newView }, '', '');
+    } else {
+      window.history.pushState({ view: newView }, '', '');
+    }
+    setViewInternal(newView);
+  };
+
+  // Sync state with history events (browser back/forward button)
+  useEffect(() => {
+    // Initial history state
+    window.history.replaceState({ view: 'menu' }, '', '');
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        setViewInternal(event.state.view);
+      } else {
+        setViewInternal('menu');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const fetchOrders = async () => {
     try {
@@ -165,17 +196,35 @@ const App: React.FC = () => {
 
   const filteredOrders = orders.filter(o => adminFilter === 'all' ? true : o.status === adminFilter).sort((a,b) => b.timestamp - a.timestamp);
 
+  const handleBackToMenu = () => {
+    // If we're in history, just go back
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setView('menu');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFDFB] text-gray-800 font-['Cairo'] pb-20">
       <header className="bg-amber-950 text-white p-4 sticky top-0 z-50 flex justify-between items-center border-b-4 border-orange-500 shadow-xl">
         <div className="flex items-center gap-3">
+          {view !== 'menu' && (
+            <button 
+              onClick={handleBackToMenu}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              aria-label="الرجوع"
+            >
+              <Icons.ArrowRight />
+            </button>
+          )}
           <div className="bg-white p-1 rounded-xl w-10 h-10 shadow-inner">
             <img src={LOGO_URL} className="w-full h-full object-contain" alt="بالهنا" />
           </div>
           <h1 className="font-black text-xl tracking-tight">بالهنا</h1>
         </div>
         <button 
-          onClick={() => view === 'admin' ? setView('menu') : setShowAdminLogin(true)}
+          onClick={() => view === 'admin' ? handleBackToMenu() : setShowAdminLogin(true)}
           className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-[11px] font-bold border border-white/5 transition-all"
         >
           {view === 'admin' ? 'الرجوع للمنيو' : 'لوحة الإدارة'}
