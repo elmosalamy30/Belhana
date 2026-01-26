@@ -9,10 +9,19 @@ export interface Drink {
   image: string;
 }
 
+export interface OrderItem {
+  drinkId: string;
+  drinkName: string;
+  quantity: number;
+  price: number;
+}
+
 export interface Order {
   id: string;
-  drinkName: string;
+  items: OrderItem[];
+  totalPrice: number;
   clinicName: string;
+  contactInfo: string;
   status: 'pending' | 'completed' | 'cancelled';
   timestamp: number;
   notes?: string;
@@ -25,7 +34,7 @@ export const CLINICS = [
   "عيادة النساء والتوليد",
   "عيادة العظام",
   "عيادة الأسنان",
-  "المختبر (المعمل)",
+  "المختبر (الممعمل)",
   "الصيدلية",
   "الاستقبال",
   "الإدارة"
