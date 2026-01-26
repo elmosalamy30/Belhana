@@ -9,6 +9,14 @@ export interface Drink {
   image: string;
 }
 
+export interface DoctorAd {
+  id: string;
+  name: string;
+  specialty: string;
+  location: string;
+  image: string;
+}
+
 export interface OrderItem {
   drinkId: string;
   drinkName: string;

@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { MENU_ITEMS, ADMIN_PASSWORD } from './constants';
-import { Drink, Order, OrderItem, CLINICS } from './types';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD } from './constants';
+import { Drink, Order, OrderItem, CLINICS, DoctorAd } from './types';
 
 const Icons = {
   Coffee: () => (
@@ -33,10 +33,15 @@ const Icons = {
   ),
   Trash: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+  ),
+  Bell: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+  ),
+  BellOff: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h9"/><path d="m2 2 20 20"/><path d="M18 8a2 2 0 1 1-4 0"/></svg>
   )
 };
 
-// Define interface for cart item to avoid 'unknown' type issues with Object.values
 interface CartItem {
   drink: Drink;
   quantity: number;
@@ -45,19 +50,26 @@ interface CartItem {
 const App: React.FC = () => {
   const [view, setView] = useState<'menu' | 'cart' | 'admin'>('menu');
   const [orders, setOrders] = useState<Order[]>([]);
-  // Use CartItem interface for the cart state
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [selectedClinic, setSelectedClinic] = useState("");
   const [contactInfo, setContactInfo] = useState("");
   const [orderNote, setOrderNote] = useState("");
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('bel_hana_sound');
+    return saved === null ? true : saved === 'true';
+  });
+  
   const [notificationSound] = useState(() => new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+  const prevPendingCount = useRef(0);
 
   useEffect(() => {
     const savedOrders = localStorage.getItem('bel_hana_orders');
     if (savedOrders) {
       try {
-        setOrders(JSON.parse(savedOrders));
+        const parsed = JSON.parse(savedOrders);
+        setOrders(parsed);
+        prevPendingCount.current = parsed.filter((o: Order) => o.status === 'pending').length;
       } catch (e) {
         console.error("فشل تحميل الطلبات");
       }
@@ -66,13 +78,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('bel_hana_orders', JSON.stringify(orders));
-    const lastOrder = orders[orders.length - 1];
-    if (view === 'admin' && lastOrder?.status === 'pending') {
+    localStorage.setItem('bel_hana_sound', String(isSoundEnabled));
+
+    const currentPendingCount = orders.filter(o => o.status === 'pending').length;
+    
+    // Play sound only if new orders arrived and sound is enabled and we are in admin view
+    if (view === 'admin' && isSoundEnabled && currentPendingCount > prevPendingCount.current) {
       notificationSound.play().catch(() => {});
     }
-  }, [orders, view, notificationSound]);
+    
+    prevPendingCount.current = currentPendingCount;
+  }, [orders, view, isSoundEnabled, notificationSound]);
 
-  // Cast Object.values to CartItem[] to ensure type safety in map/reduce
   const cartItemsCount = useMemo(() => 
     (Object.values(cart) as CartItem[]).reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
@@ -100,7 +117,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Cast Object.values to CartItem[] to ensure type safety in map/reduce
     const orderItems: OrderItem[] = (Object.values(cart) as CartItem[]).map(item => ({
       drinkId: item.drink.id,
       drinkName: item.drink.name,
@@ -175,7 +191,7 @@ const App: React.FC = () => {
 
       <main className="container mx-auto px-4 py-6">
         {view === 'menu' && (
-          <div className="space-y-8 animate-fadeIn">
+          <div className="space-y-12 animate-fadeIn">
             <section>
               <h2 className="text-xl font-bold mb-6 flex items-center gap-3">
                 <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
@@ -212,6 +228,40 @@ const App: React.FC = () => {
                 })}
               </div>
             </section>
+
+            <section className="pt-8 border-t border-gray-200">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-3">
+                <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
+                أطباؤنا المتميزون بالمجمع
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {DOCTOR_ADS.map(doctor => (
+                  <div key={doctor.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <img src={doctor.image} alt={doctor.name} className="w-20 h-20 rounded-full object-cover border-2 border-emerald-50" />
+                    <div className="flex-1">
+                      <div className="font-black text-gray-800">{doctor.name}</div>
+                      <div className="text-sm text-emerald-600 font-bold mb-1">{doctor.specialty}</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-1">
+                        <Icons.Check /> {doctor.location}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 bg-gradient-to-r from-emerald-600 to-teal-700 p-6 rounded-2xl text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg overflow-hidden relative">
+                <div className="absolute -right-10 -top-10 opacity-10 transform rotate-12">
+                   <Icons.Coffee />
+                </div>
+                <div className="z-10">
+                  <h3 className="text-xl font-black mb-1">ضع إعلان عيادتك هنا!</h3>
+                  <p className="text-emerald-50 text-sm font-bold">للتواصل بخصوص الإعلانات داخل تطبيق "بالهنا"، يرجى التواصل مع إدارة المجمع.</p>
+                </div>
+                <button className="z-10 bg-white text-emerald-700 px-8 py-3 rounded-xl font-black hover:bg-emerald-50 transition-colors shadow-md text-sm whitespace-nowrap">
+                   تواصل معنا الآن
+                </button>
+              </div>
+            </section>
           </div>
         )}
 
@@ -226,7 +276,6 @@ const App: React.FC = () => {
                 <Icons.Cart /> ملخص السلة
               </div>
               <div className="divide-y divide-gray-100">
-                {/* Cast Object.values to CartItem[] to ensure type safety in map/reduce */}
                 {(Object.values(cart) as CartItem[]).map(item => (
                   <div key={item.drink.id} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -320,6 +369,13 @@ const App: React.FC = () => {
                 <span className="w-2 h-8 bg-orange-500 rounded-full inline-block"></span>
                 طلبات البوفيه الجارية
               </h2>
+              <button 
+                onClick={() => setIsSoundEnabled(!isSoundEnabled)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all font-bold text-sm ${isSoundEnabled ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
+                title={isSoundEnabled ? "تنبيهات الصوت مفعلة" : "تنبيهات الصوت صامتة"}
+              >
+                {isSoundEnabled ? <><Icons.Bell /> صوت التنبيه: يعمل</> : <><Icons.BellOff /> صوت التنبيه: صامت</>}
+              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
