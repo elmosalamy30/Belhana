@@ -2,16 +2,76 @@
 import { Drink, DoctorAd } from './types';
 
 export const MENU_ITEMS: Drink[] = [
-  { id: 'h1', name: 'شاي أحمر', price: 10, category: 'hot', image: 'https://images.unsplash.com/photo-1544787210-282dc9ef0b6e?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'h2', name: 'قهوة سادة', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'h3', name: 'قهوة فرنساوي', price: 20, category: 'hot', image: 'https://images.unsplash.com/photo-1512568433529-59987c89e118?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'h4', name: 'نسكافيه', price: 25, category: 'hot', image: 'https://images.unsplash.com/photo-1552683325-09514e86a98f?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'h5', name: 'سحلب بالمكسرات', price: 30, category: 'hot', image: 'https://images.unsplash.com/photo-1603566030512-701382900742?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'h6', name: 'يانسون', price: 12, category: 'hot', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'c1', name: 'بيبسي', price: 15, category: 'cold', image: 'https://images.unsplash.com/photo-1553456523-22d5138f3223?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'c2', name: 'سفن أب', price: 15, category: 'cold', image: 'https://images.unsplash.com/photo-1622483767028-3f66f34aef97?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'c3', name: 'ميريندا برتقال', price: 15, category: 'cold', image: 'https://images.unsplash.com/photo-1624517452488-04869289c4ca?q=80&w=400&h=300&auto=format&fit=crop' },
-  { id: 'c4', name: 'مياه معدنية', price: 7, category: 'cold', image: 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?q=80&w=400&h=300&auto=format&fit=crop' },
+  { 
+    id: 'h1', 
+    name: 'شاي أحمر', 
+    price: 10, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1594631252845-29fc4586bd91?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'h2', 
+    name: 'قهوة سادة', 
+    price: 15, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'h3', 
+    name: 'قهوة فرنساوي', 
+    price: 20, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'h4', 
+    name: 'نسكافيه', 
+    price: 25, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'h5', 
+    name: 'سحلب بالمكسرات', 
+    price: 30, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'h6', 
+    name: 'يانسون', 
+    price: 12, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'c1', 
+    name: 'بيبسي', 
+    price: 15, 
+    category: 'cold', 
+    image: 'https://images.unsplash.com/photo-1581006852262-e4307cf6283a?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'c2', 
+    name: 'سفن أب', 
+    price: 15, 
+    category: 'cold', 
+    image: 'https://images.unsplash.com/photo-1625772290748-39123d81861e?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'c3', 
+    name: 'ميريندا برتقال', 
+    price: 15, 
+    category: 'cold', 
+    image: 'https://images.unsplash.com/photo-1624517452488-04869289c4ca?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'c4', 
+    name: 'مياه معدنية', 
+    price: 7, 
+    category: 'cold', 
+    image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?q=80&w=400&auto=format&fit=crop' 
+  },
 ];
 
 export const DOCTOR_ADS: DoctorAd[] = [
