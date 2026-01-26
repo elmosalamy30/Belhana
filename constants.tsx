@@ -60,4 +60,4 @@ export const DOCTOR_ADS: DoctorAd[] = [
 ];
 
 export const ADMIN_PASSWORD = "123";
-export const ADMIN_WHATSAPP = "201107223041"; // تم تحديث الرقم إلى الرقم المطلوب
+export const ADMIN_WHATSAPP = "201107223041";
