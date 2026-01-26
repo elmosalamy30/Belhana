@@ -77,9 +77,9 @@ const App: React.FC = () => {
     }
   }, [orders, view]);
 
-  // Fix: Explicitly type 'item' to CartItem to resolve unknown type error
+  // Fix: Explicitly type 'sum' to number to resolve unknown type error in operator '+'
   const cartTotalPrice = useMemo(() => 
-    Object.values(cart).reduce((sum, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
+    Object.values(cart).reduce((sum: number, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
   const updateCart = (drink: Drink, delta: number) => {
     setCart(prev => {
@@ -347,8 +347,8 @@ const App: React.FC = () => {
         <div className="fixed bottom-6 inset-x-4 max-w-lg mx-auto z-[60] animate-in slide-in-from-bottom-10 duration-500">
           <button onClick={() => setView('cart')} className="w-full bg-amber-950 text-white p-5 rounded-3xl shadow-2xl flex justify-between items-center border-b-4 border-orange-600 active:scale-95 transition-transform">
             <div className="flex items-center gap-4">
-              {/* Fix: Explicitly type 'b' as CartItem in reduce callback to resolve unknown property error */}
-              <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a, b: CartItem) => a + b.quantity, 0)}</div>
+              {/* Fix: Explicitly type 'a' as number in reduce callback to resolve unknown property error */}
+              <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a: number, b: CartItem) => a + b.quantity, 0)}</div>
               <div className="text-right">
                 <div className="text-xs opacity-60 font-bold">عرض السلة</div>
                 <div className="font-black text-lg">إتمام الطلب</div>
