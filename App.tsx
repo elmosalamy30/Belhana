@@ -66,6 +66,7 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>("-");
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [adminFilter, setAdminFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all');
   
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
   const prevOrdersCount = useRef(0);
@@ -148,6 +149,14 @@ const App: React.FC = () => {
 
   const cartTotalPrice = useMemo(() => 
     (Object.values(cart) as CartItem[]).reduce((sum, item) => sum + (item.drink.price * item.quantity), 0), [cart]);
+
+  const filteredOrders = useMemo(() => {
+    let list = [...orders];
+    if (adminFilter !== 'all') {
+      list = list.filter(o => o.status === adminFilter);
+    }
+    return list.sort((a, b) => b.timestamp - a.timestamp);
+  }, [orders, adminFilter]);
 
   const updateCart = (drink: Drink, delta: number) => {
     setCart(prev => {
@@ -391,7 +400,7 @@ const App: React.FC = () => {
                   <div className={`w-2.5 h-2.5 rounded-full ${isSyncing ? 'bg-orange-500 animate-ping' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'}`}></div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 <button onClick={syncWithCloud} className="p-3 bg-amber-50 rounded-xl border border-amber-100 text-amber-900 font-black text-[10px] flex items-center gap-2 hover:bg-amber-100"><Icons.CloudSync /> تحديث يدوي</button>
                 <button onClick={() => setIsSoundEnabled(!isSoundEnabled)} className={`p-3 rounded-xl border font-black text-[10px] flex items-center gap-2 ${isSoundEnabled ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
                    {isSoundEnabled ? <Icons.Bell /> : <Icons.Wifi />} جرس: {isSoundEnabled ? 'يعمل' : 'صامت'}
@@ -399,11 +408,40 @@ const App: React.FC = () => {
               </div>
             </div>
 
+            {/* أزرار التصفية الجديدة */}
+            <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white/50 p-2 rounded-2xl border border-amber-50/50 max-w-fit mx-auto">
+              {[
+                { id: 'all', label: 'الكل' },
+                { id: 'pending', label: 'قيد الانتظار' },
+                { id: 'completed', label: 'المكتملة' },
+                { id: 'cancelled', label: 'الملغاة' }
+              ].map(filter => (
+                <button
+                  key={filter.id}
+                  onClick={() => setAdminFilter(filter.id as any)}
+                  className={`px-6 py-2 rounded-xl text-[11px] font-black transition-all ${
+                    adminFilter === filter.id 
+                    ? 'bg-orange-600 text-white shadow-lg scale-105' 
+                    : 'bg-white text-amber-900 border border-amber-100 hover:bg-amber-50'
+                  }`}
+                >
+                  {filter.label}
+                  {filter.id !== 'all' && (
+                    <span className="mr-2 opacity-60 text-[9px]">
+                      ({orders.filter(o => o.status === filter.id).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.length === 0 ? (
-                <div className="col-span-full p-20 text-center text-amber-200 font-black italic">لا توجد طلبات واردة حالياً..</div>
+              {filteredOrders.length === 0 ? (
+                <div className="col-span-full p-20 text-center text-amber-200 font-black italic">
+                  {adminFilter === 'all' ? 'لا توجد طلبات واردة حالياً..' : 'لا توجد طلبات تطابق هذا التصنيف..'}
+                </div>
               ) : (
-                orders.sort((a, b) => b.timestamp - a.timestamp).map(order => (
+                filteredOrders.map(order => (
                   <div key={order.id} className={`bg-white p-5 rounded-[32px] shadow-sm border-2 transition-all relative overflow-hidden ${order.status === 'pending' ? 'border-orange-500 animate-pulse-subtle bg-orange-50/5' : 'border-amber-50 opacity-80'}`}>
                     {order.status === 'pending' && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[8px] font-black px-3 py-1 rounded-bl-xl shadow-md">طلب جديد</div>}
                     <div className="flex justify-between items-start mb-4">
