@@ -65,7 +65,7 @@ export const DOCTOR_ADS: DoctorAd[] = [
     id: 'd4', 
     name: 'د. محمد أشرف', 
     specialty: 'طبيب أسنان', 
-    location: 'عيادة 310', 
+    location: 'عيادة 310 - الدور الثالث', 
     image: 'https://archive.org/download/screenshot-2026-01-26-21-25-23-60-99c-04817c-0de-5652397fc-8b-56c-3b-3817/__ia_thumb.jpg' 
   },
   { id: 'd1', name: 'د. أحمد علي', specialty: 'استشاري جراحة العظام', location: 'عيادة العظام - الدور الأول', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=300&h=300&auto=format&fit=crop' },

@@ -29,6 +29,8 @@ export interface Order {
   items: OrderItem[];
   totalPrice: number;
   clinicName: string;
+  clinicNumber?: string;
+  floorNumber?: string;
   contactInfo: string;
   status: 'pending' | 'completed' | 'cancelled';
   timestamp: number;

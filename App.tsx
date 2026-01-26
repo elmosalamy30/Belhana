@@ -11,7 +11,8 @@ const Icons = {
   Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
   User: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   WhatsApp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
-  Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+  Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+  MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
@@ -21,6 +22,8 @@ const App: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [selectedClinic, setSelectedClinic] = useState("");
+  const [clinicNumber, setClinicNumber] = useState("");
+  const [floorNumber, setFloorNumber] = useState("");
   const [contactInfo, setContactInfo] = useState("");
   const [orderNote, setOrderNote] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -77,7 +80,6 @@ const App: React.FC = () => {
     }
   }, [orders, view]);
 
-  // Fix: Explicitly type 'sum' to number to resolve unknown type error in operator '+'
   const cartTotalPrice = useMemo(() => 
     Object.values(cart).reduce((sum: number, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
@@ -99,10 +101,11 @@ const App: React.FC = () => {
     setIsPlacingOrder(true);
     const newOrder: Order = {
       id: Math.random().toString(36).substr(2, 5).toUpperCase(),
-      // Fix: Explicitly type 'i' to CartItem to resolve unknown type error
       items: Object.values(cart).map((i: CartItem) => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
       totalPrice: cartTotalPrice,
       clinicName: selectedClinic,
+      clinicNumber: clinicNumber.trim() || undefined,
+      floorNumber: floorNumber.trim() || undefined,
       contactInfo: contactInfo.trim(),
       status: 'pending',
       timestamp: Date.now(),
@@ -113,10 +116,16 @@ const App: React.FC = () => {
     const updated = [...currentOrders, newOrder];
     await saveOrders(updated);
     
+    const locationDetails = [
+      newOrder.clinicName,
+      newOrder.floorNumber ? `الدور: ${newOrder.floorNumber}` : '',
+      newOrder.clinicNumber ? `عيادة: ${newOrder.clinicNumber}` : ''
+    ].filter(Boolean).join(' | ');
+
     const msg = encodeURIComponent(
       `☕ *طلب مشروبات من تطبيق بالهنا*\n` +
       `--------------------------\n` +
-      `📍 *العيادة:* ${newOrder.clinicName}\n` +
+      `📍 *المكان:* ${locationDetails}\n` +
       `👤 *الاسم:* ${newOrder.contactInfo}\n` +
       `🥤 *الطلبات:* ${newOrder.items.map(i => `${i.drinkName} (x${i.quantity})`).join('، ')}\n` +
       `💰 *الإجمالي:* ${newOrder.totalPrice} ج.م\n` +
@@ -144,7 +153,6 @@ const App: React.FC = () => {
   };
 
   const handleAdminLogin = () => {
-    // إزالة أي مسافات زائدة من المدخلات
     if (adminPassInput.trim() === ADMIN_PASSWORD) {
       setView('admin');
       setShowAdminLogin(false);
@@ -207,6 +215,7 @@ const App: React.FC = () => {
                     <div className="leading-tight">
                       <div className="font-black text-amber-950 text-xs">{d.name}</div>
                       <div className="text-[10px] text-gray-400 font-bold">{d.specialty}</div>
+                      <div className="text-[9px] text-orange-500 font-bold mt-1">{d.location}</div>
                     </div>
                   </div>
                 ))}
@@ -220,7 +229,6 @@ const App: React.FC = () => {
             <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-amber-50">
               <h2 className="text-center font-black text-2xl mb-6">ملخص الطلب 🧺</h2>
               <div className="space-y-3 mb-6">
-                {/* Fix: Explicitly type 'i' to CartItem to resolve unknown type error */}
                 {Object.values(cart).map((i: CartItem) => (
                   <div key={i.drink.id} className="flex justify-between items-center text-sm font-bold border-b border-amber-50 pb-2">
                     <span>{i.drink.name} <span className="text-orange-600">×{i.quantity}</span></span>
@@ -239,6 +247,12 @@ const App: React.FC = () => {
                 <option value="">أين أنت الآن؟ (اختر العيادة)</option>
                 {CLINICS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <input value={floorNumber} onChange={e => setFloorNumber(e.target.value)} placeholder="رقم الدور" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
+                <input value={clinicNumber} onChange={e => setClinicNumber(e.target.value)} placeholder="رقم العيادة" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
+              </div>
+
               <input value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="اسم الدكتور أو الموظف" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
               <input value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="ملاحظات (مثلاً: سكر زيادة)" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
               
@@ -282,7 +296,11 @@ const App: React.FC = () => {
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <div className="font-black text-xl text-amber-950 leading-tight">{o.clinicName}</div>
-                        <div className="text-xs font-bold text-orange-600 mt-1 flex items-center gap-1"><Icons.User /> {o.contactInfo}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {o.floorNumber && <span className="text-[10px] bg-amber-100 px-2 py-0.5 rounded-lg font-bold">الدور: {o.floorNumber}</span>}
+                          {o.clinicNumber && <span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-lg font-bold">العيادة: {o.clinicNumber}</span>}
+                        </div>
+                        <div className="text-xs font-bold text-orange-600 mt-2 flex items-center gap-1"><Icons.User /> {o.contactInfo}</div>
                       </div>
                       <span className="text-[9px] font-black bg-amber-50 px-2 py-1 rounded-lg">#{o.id}</span>
                     </div>
@@ -347,7 +365,6 @@ const App: React.FC = () => {
         <div className="fixed bottom-6 inset-x-4 max-w-lg mx-auto z-[60] animate-in slide-in-from-bottom-10 duration-500">
           <button onClick={() => setView('cart')} className="w-full bg-amber-950 text-white p-5 rounded-3xl shadow-2xl flex justify-between items-center border-b-4 border-orange-600 active:scale-95 transition-transform">
             <div className="flex items-center gap-4">
-              {/* Fix: Explicitly type 'a' as number in reduce callback to resolve unknown property error */}
               <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a: number, b: CartItem) => a + b.quantity, 0)}</div>
               <div className="text-right">
                 <div className="text-xs opacity-60 font-bold">عرض السلة</div>
