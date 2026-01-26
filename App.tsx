@@ -4,6 +4,9 @@ import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD } from './constants';
 import { Drink, Order, OrderItem, CLINICS, DoctorAd } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
+// معرف فريد للمجمع للمزامنة عبر الإنترنت (يمكن تغييره لإنشاء غرف مستقلة)
+const SYNC_BUCKET_ID = "bal_hana_clinic_v1_orders";
+const SYNC_API_URL = `https://kvdb.io/6E3qV3pE9yU5vH7N9w4G9x/${SYNC_BUCKET_ID}`;
 
 const Icons = {
   Coffee: () => (
@@ -44,6 +47,9 @@ const Icons = {
   ),
   Wifi: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" x2="12.01" y1="20" y2="20"/></svg>
+  ),
+  CloudSync: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4"/><path d="m16 2.5 1.5 1.5"/><path d="M21 12h-4"/><path d="m16 21.5-1.5-1.5"/><path d="M12 22v-4"/><path d="m8 21.5-1.5-1.5"/><path d="M3 12h4"/><path d="m8 2.5-1.5 1.5"/><circle cx="12" cy="12" r="3"/></svg>
   )
 };
 
@@ -60,6 +66,7 @@ const App: React.FC = () => {
   const [contactInfo, setContactInfo] = useState("");
   const [orderNote, setOrderNote] = useState("");
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
     const saved = localStorage.getItem('bel_hana_sound');
     return saved === null ? true : saved === 'true';
@@ -68,48 +75,63 @@ const App: React.FC = () => {
   const [notificationSound] = useState(() => new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
   const prevPendingCount = useRef(0);
 
-  // تحميل الطلبات لأول مرة
-  useEffect(() => {
-    const loadOrders = () => {
-      const savedOrders = localStorage.getItem('bel_hana_orders');
-      if (savedOrders) {
-        try {
-          const parsed = JSON.parse(savedOrders);
-          setOrders(parsed);
-          prevPendingCount.current = parsed.filter((o: Order) => o.status === 'pending').length;
-        } catch (e) {
-          console.error("فشل تحميل الطلبات");
+  // وظيفة لجلب الطلبات من السحابة
+  const fetchOrdersFromCloud = async () => {
+    try {
+      setIsSyncing(true);
+      const response = await fetch(SYNC_API_URL);
+      if (response.ok) {
+        const cloudOrders = await response.json();
+        if (Array.isArray(cloudOrders)) {
+          setOrders(cloudOrders);
+          localStorage.setItem('bel_hana_orders', JSON.stringify(cloudOrders));
         }
       }
-    };
-    loadOrders();
+    } catch (e) {
+      console.error("فشل المزامنة من السحابة");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
-    // الاستماع للتغييرات في localStorage من تبويبات أخرى (المزامنة الحية)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'bel_hana_orders') {
-        loadOrders();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+  // وظيفة لرفع الطلبات إلى السحابة
+  const pushOrdersToCloud = async (updatedOrders: Order[]) => {
+    try {
+      setIsSyncing(true);
+      await fetch(SYNC_API_URL, {
+        method: 'POST',
+        body: JSON.stringify(updatedOrders),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.error("فشل الرفع للسحابة");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // تحميل الطلبات لأول مرة وبدء التحديث التلقائي
+  useEffect(() => {
+    fetchOrdersFromCloud();
+    
+    // تحديث تلقائي كل 7 ثوانٍ لضمان وصول الطلبات الجديدة
+    const interval = setInterval(() => {
+      fetchOrdersFromCloud();
+    }, 7000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // حفظ الطلبات وتشغيل التنبيه
+  // تشغيل التنبيه عند وصول طلب جديد
   useEffect(() => {
-    localStorage.setItem('bel_hana_orders', JSON.stringify(orders));
-    localStorage.setItem('bel_hana_sound', String(isSoundEnabled));
-
     const currentPendingCount = orders.filter(o => o.status === 'pending').length;
-    
-    // تشغيل الصوت فقط إذا زاد عدد الطلبات المعلقة وكنا في لوحة الإدارة
     if (isSoundEnabled && currentPendingCount > prevPendingCount.current) {
       if (view === 'admin') {
         notificationSound.play().catch(() => {});
       }
     }
-    
     prevPendingCount.current = currentPendingCount;
-  }, [orders, view, isSoundEnabled, notificationSound]);
+  }, [orders, view, isSoundEnabled]);
 
   const cartItemsCount = useMemo(() => 
     (Object.values(cart) as CartItem[]).reduce((sum, item) => sum + item.quantity, 0), [cart]);
@@ -132,7 +154,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!selectedClinic || !contactInfo.trim()) {
       alert("الرجاء اختيار العيادة وإدخال الاسم");
       return;
@@ -146,7 +168,7 @@ const App: React.FC = () => {
     }));
 
     const newOrder: Order = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substr(2, 6),
       items: orderItems,
       totalPrice: cartTotalPrice,
       clinicName: selectedClinic,
@@ -156,10 +178,16 @@ const App: React.FC = () => {
       notes: orderNote.trim() || undefined
     };
 
-    const updatedOrders = [...orders, newOrder];
+    // جلب أحدث الطلبات قبل الإضافة لمنع ضياع البيانات
+    let currentOrders: Order[] = [];
+    try {
+        const response = await fetch(SYNC_API_URL);
+        if (response.ok) currentOrders = await response.json();
+    } catch(e) {}
+
+    const updatedOrders = [...currentOrders, newOrder];
     setOrders(updatedOrders);
-    // تحديث localStorage يدوياً للتأكد من وصوله فوراً للتبويبات الأخرى
-    localStorage.setItem('bel_hana_orders', JSON.stringify(updatedOrders));
+    await pushOrdersToCloud(updatedOrders);
     
     setCart({});
     setSelectedClinic("");
@@ -171,18 +199,19 @@ const App: React.FC = () => {
     setTimeout(() => setShowOrderSuccess(false), 3000);
   };
 
-  const updateOrderStatus = (id: string, status: Order['status']) => {
+  const updateOrderStatus = async (id: string, status: Order['status']) => {
     const updatedOrders = orders.map(order => 
       order.id === id ? { ...order, status } : order
     );
     setOrders(updatedOrders);
-    localStorage.setItem('bel_hana_orders', JSON.stringify(updatedOrders));
+    await pushOrdersToCloud(updatedOrders);
   };
 
   const handleAdminLogin = () => {
     const pass = prompt("الرجاء إدخال كلمة المرور السرية:");
     if (pass === ADMIN_PASSWORD) {
       setView('admin');
+      fetchOrdersFromCloud(); // جلب فوري عند الدخول
     } else {
       alert("كلمة مرور خاطئة!");
     }
@@ -379,11 +408,11 @@ const App: React.FC = () => {
 
               <button 
                 onClick={handlePlaceOrder}
-                disabled={!selectedClinic || !contactInfo.trim()}
-                className={`w-full py-5 rounded-2xl font-bold text-xl shadow-lg transition-all flex items-center justify-center gap-3 ${selectedClinic && contactInfo.trim() ? 'bg-amber-800 text-white hover:bg-amber-900 active:scale-95' : 'bg-amber-100 text-amber-300 cursor-not-allowed'}`}
+                disabled={!selectedClinic || !contactInfo.trim() || isSyncing}
+                className={`w-full py-5 rounded-2xl font-bold text-xl shadow-lg transition-all flex items-center justify-center gap-3 ${selectedClinic && contactInfo.trim() && !isSyncing ? 'bg-amber-800 text-white hover:bg-amber-900 active:scale-95' : 'bg-amber-100 text-amber-300 cursor-not-allowed'}`}
               >
-                تأكيد وإرسال الطلب ( {cartTotalPrice} ج.م )
-                <Icons.Check />
+                {isSyncing ? 'جاري الإرسال...' : `تأكيد وإرسال الطلب ( ${cartTotalPrice} ج.م )`}
+                {!isSyncing && <Icons.Check />}
               </button>
             </section>
           </div>
@@ -393,89 +422,133 @@ const App: React.FC = () => {
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
               <div className="flex flex-col gap-1">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
+                <h2 className="text-2xl font-bold flex items-center gap-2 text-amber-900">
                   <span className="w-2 h-8 bg-orange-500 rounded-full inline-block"></span>
-                  طلبات البوفيه الجارية
+                  لوحة إدارة الطلبات
                 </h2>
-                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 animate-pulse">
-                  <Icons.Wifi /> متصل الآن (يتم التحديث تلقائياً)
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-1 text-[10px] font-bold ${isSyncing ? 'text-orange-500' : 'text-emerald-600'}`}>
+                    <Icons.Wifi /> {isSyncing ? 'جاري المزامنة...' : 'متصل بالسحابة (تحديث فوري)'}
+                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsSoundEnabled(!isSoundEnabled)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all font-bold text-sm ${isSoundEnabled ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
-              >
-                {isSoundEnabled ? <><Icons.Bell /> التنبيه الصوتي: يعمل</> : <><Icons.BellOff /> التنبيه الصوتي: صامت</>}
-              </button>
+              <div className="flex gap-3">
+                <button 
+                  onClick={fetchOrdersFromCloud}
+                  className="p-2 bg-white rounded-xl border border-amber-100 text-amber-700 hover:bg-amber-50 shadow-sm transition-all flex items-center gap-2 text-xs font-bold"
+                >
+                  <Icons.CloudSync /> تحديث الآن
+                </button>
+                <button 
+                  onClick={() => setIsSoundEnabled(!isSoundEnabled)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all font-bold text-sm ${isSoundEnabled ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
+                >
+                  {isSoundEnabled ? <><Icons.Bell /> التنبيه الصوتي: يعمل</> : <><Icons.BellOff /> التنبيه الصوتي: صامت</>}
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <h3 className="font-bold text-lg text-amber-900 flex items-center gap-2">
-                  🔔 طلبات جديدة {orders.filter(o => o.status === 'pending').length > 0 && `(${orders.filter(o => o.status === 'pending').length})`}
-                </h3>
-                {orders.filter(o => o.status === 'pending').length === 0 ? (
-                  <div className="bg-white p-12 text-center rounded-2xl border-2 border-dashed border-amber-100 text-amber-200 font-bold italic">لا يوجد طلبات حالياً..</div>
-                ) : (
-                  orders.filter(o => o.status === 'pending').sort((a,b) => b.timestamp - a.timestamp).map(order => (
-                    <div key={order.id} className="bg-white p-5 rounded-2xl shadow-md border-r-8 border-orange-500 relative overflow-hidden group">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="text-amber-900 font-black text-xl mb-1">{order.clinicName}</div>
-                          <div className="flex items-center gap-2 text-gray-700 font-bold bg-amber-50 px-3 py-1 rounded-full w-fit text-xs">
-                            <Icons.User /> {order.contactInfo}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] text-gray-400 font-bold">{new Date(order.timestamp).toLocaleTimeString('ar-EG')}</span>
-                          <span className="font-black text-orange-600 text-lg">{order.totalPrice} ج.م</span>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-amber-50/50 rounded-xl p-4 space-y-2 mb-4 border border-amber-50">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-sm font-bold text-amber-950">
-                            <span>{item.drinkName} × {item.quantity}</span>
-                            <span className="text-amber-700">{item.price * item.quantity} ج.م</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {order.notes && (
-                        <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-xs text-orange-800 italic flex items-center gap-2 mb-4">
-                          <Icons.Note /> {order.notes}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <button onClick={() => updateOrderStatus(order.id, 'completed')} className="flex-1 bg-amber-800 text-white py-3 rounded-xl font-bold hover:bg-amber-900 shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
-                          <Icons.Check /> تم التحضير
-                        </button>
-                        <button onClick={() => updateOrderStatus(order.id, 'cancelled')} className="px-4 bg-red-50 text-red-500 rounded-xl font-bold hover:bg-red-100 transition-colors border border-red-100">
-                          <Icons.Trash />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-amber-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-amber-900 text-white">
+                      <th className="p-4 font-bold text-sm">ID</th>
+                      <th className="p-4 font-bold text-sm">العيادة / القسم</th>
+                      <th className="p-4 font-bold text-sm">صاحب الطلب</th>
+                      <th className="p-4 font-bold text-sm">الطلب</th>
+                      <th className="p-4 font-bold text-sm">الوقت</th>
+                      <th className="p-4 font-bold text-sm">الإجمالي</th>
+                      <th className="p-4 font-bold text-sm">الحالة</th>
+                      <th className="p-4 font-bold text-sm text-center">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-50">
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-amber-200 font-bold italic bg-amber-50/20">
+                          لا توجد طلبات مسجلة حتى الآن
+                        </td>
+                      </tr>
+                    ) : (
+                      orders.sort((a, b) => b.timestamp - a.timestamp).map((order) => (
+                        <tr key={order.id} className={`hover:bg-amber-50/50 transition-colors ${order.status === 'pending' ? 'bg-orange-50/30' : ''}`}>
+                          <td className="p-4 text-xs font-mono text-gray-400">#{order.id}</td>
+                          <td className="p-4 font-black text-amber-900">{order.clinicName}</td>
+                          <td className="p-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-700">{order.contactInfo}</span>
+                              {order.notes && (
+                                <span className="text-[10px] text-orange-600 italic flex items-center gap-1 mt-1">
+                                  <Icons.Note /> {order.notes}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex flex-wrap gap-1">
+                              {order.items.map((item, idx) => (
+                                <span key={idx} className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                  {item.drinkName} × {item.quantity}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-4 text-[10px] font-bold text-gray-500">
+                            {new Date(order.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="p-4 font-black text-amber-900">{order.totalPrice} ج.م</td>
+                          <td className="p-4">
+                            <span className={`text-[10px] font-black px-3 py-1 rounded-full inline-block ${
+                              order.status === 'pending' ? 'bg-orange-100 text-orange-700 animate-pulse' :
+                              order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {order.status === 'pending' ? 'جاري التحضير' :
+                               order.status === 'completed' ? 'تم التسليم' : 'ملغي'}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex justify-center gap-2">
+                              {order.status === 'pending' ? (
+                                <>
+                                  <button 
+                                    onClick={() => updateOrderStatus(order.id, 'completed')}
+                                    className="p-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all shadow-sm"
+                                    title="إتمام الطلب"
+                                  >
+                                    <Icons.Check />
+                                  </button>
+                                  <button 
+                                    onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-sm"
+                                    title="إلغاء الطلب"
+                                  >
+                                    <Icons.Trash />
+                                  </button>
+                                </>
+                              ) : (
+                                <button 
+                                  onClick={() => updateOrderStatus(order.id, 'pending')}
+                                  className="text-[10px] font-bold text-amber-600 hover:underline"
+                                >
+                                  إعادة فتح
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-              
-              <div className="space-y-4">
-                <h3 className="font-bold text-lg text-gray-400">سجل اليوم</h3>
-                <div className="space-y-3">
-                  {orders.filter(o => o.status !== 'pending').sort((a,b) => b.timestamp - a.timestamp).slice(0, 10).map(order => (
-                    <div key={order.id} className={`p-4 rounded-xl border-2 flex justify-between items-center transition-opacity ${order.status === 'completed' ? 'bg-white border-amber-50' : 'bg-red-50 border-red-50 opacity-60'}`}>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-amber-900 text-sm">{order.clinicName} - {order.contactInfo}</span>
-                        <span className="text-[10px] text-gray-500 font-bold">{order.items.length} منتجات • {order.totalPrice} ج.م</span>
-                      </div>
-                      <div className={`text-[10px] font-black px-3 py-1 rounded-full ${order.status === 'completed' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                        {order.status === 'completed' ? '✓ اكتمل' : '✗ ألغي'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            </div>
+            
+            <div className="flex justify-between items-center text-xs text-gray-400 px-4">
+              <span>إجمالي الطلبات اليوم: {orders.length}</span>
+              <span>طلبات مكتملة: {orders.filter(o => o.status === 'completed').length}</span>
             </div>
           </div>
         )}
@@ -525,6 +598,8 @@ const App: React.FC = () => {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         body { background-color: #fffaf5; -webkit-tap-highlight-color: transparent; }
+        table th { position: sticky; top: 0; z-index: 10; }
+        .min-w-800 { min-width: 800px; }
       `}</style>
     </div>
   );
