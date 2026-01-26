@@ -10,6 +10,13 @@ export const MENU_ITEMS: Drink[] = [
     image: 'https://images.unsplash.com/photo-1594631252845-29fc4586bd91?q=80&w=400&auto=format&fit=crop' 
   },
   { 
+    id: 'h6', 
+    name: 'شاي كرك', 
+    price: 15, 
+    category: 'hot', 
+    image: 'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?q=80&w=400&auto=format&fit=crop' 
+  },
+  { 
     id: 'h2', 
     name: 'قهوة سادة', 
     price: 25, 
@@ -54,6 +61,7 @@ export const MENU_ITEMS: Drink[] = [
 ];
 
 export const DOCTOR_ADS: DoctorAd[] = [
+  { id: 'd4', name: 'د. محمد أشرف', specialty: 'طبيب أسنان', location: 'عيادة 310', image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=300&h=300&auto=format&fit=crop' },
   { id: 'd1', name: 'د. أحمد علي', specialty: 'استشاري جراحة العظام', location: 'عيادة العظام - الدور الأول', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=300&h=300&auto=format&fit=crop' },
   { id: 'd2', name: 'د. سارة محمود', specialty: 'أخصائي طب الأطفال', location: 'عيادة الأطفال - الدور الأرضي', image: 'https://images.unsplash.com/photo-1559839734-2b71f153678b?q=80&w=300&h=300&auto=format&fit=crop' },
   { id: 'd3', name: 'د. محمد حسن', specialty: 'استشاري أمراض الباطنة', location: 'عيادة الباطنة - الدور الثاني', image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=300&h=300&auto=format&fit=crop' },

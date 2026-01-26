@@ -77,8 +77,9 @@ const App: React.FC = () => {
     }
   }, [orders, view]);
 
+  // Fix: Explicitly type 'item' to CartItem to resolve unknown type error
   const cartTotalPrice = useMemo(() => 
-    Object.values(cart).reduce((sum, item) => sum + (item.drink.price * item.quantity), 0), [cart]);
+    Object.values(cart).reduce((sum, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
   const updateCart = (drink: Drink, delta: number) => {
     setCart(prev => {
@@ -98,7 +99,8 @@ const App: React.FC = () => {
     setIsPlacingOrder(true);
     const newOrder: Order = {
       id: Math.random().toString(36).substr(2, 5).toUpperCase(),
-      items: Object.values(cart).map(i => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
+      // Fix: Explicitly type 'i' to CartItem to resolve unknown type error
+      items: Object.values(cart).map((i: CartItem) => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
       totalPrice: cartTotalPrice,
       clinicName: selectedClinic,
       contactInfo: contactInfo.trim(),
@@ -218,7 +220,8 @@ const App: React.FC = () => {
             <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-amber-50">
               <h2 className="text-center font-black text-2xl mb-6">ملخص الطلب 🧺</h2>
               <div className="space-y-3 mb-6">
-                {Object.values(cart).map(i => (
+                {/* Fix: Explicitly type 'i' to CartItem to resolve unknown type error */}
+                {Object.values(cart).map((i: CartItem) => (
                   <div key={i.drink.id} className="flex justify-between items-center text-sm font-bold border-b border-amber-50 pb-2">
                     <span>{i.drink.name} <span className="text-orange-600">×{i.quantity}</span></span>
                     <span>{i.drink.price * i.quantity} ج.م</span>
@@ -344,7 +347,8 @@ const App: React.FC = () => {
         <div className="fixed bottom-6 inset-x-4 max-w-lg mx-auto z-[60] animate-in slide-in-from-bottom-10 duration-500">
           <button onClick={() => setView('cart')} className="w-full bg-amber-950 text-white p-5 rounded-3xl shadow-2xl flex justify-between items-center border-b-4 border-orange-600 active:scale-95 transition-transform">
             <div className="flex items-center gap-4">
-              <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a,b)=>a+b.quantity,0)}</div>
+              {/* Fix: Explicitly type 'b' as CartItem in reduce callback to resolve unknown property error */}
+              <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a, b: CartItem) => a + b.quantity, 0)}</div>
               <div className="text-right">
                 <div className="text-xs opacity-60 font-bold">عرض السلة</div>
                 <div className="font-black text-lg">إتمام الطلب</div>
