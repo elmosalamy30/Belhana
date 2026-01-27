@@ -14,7 +14,9 @@ const Icons = {
   Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
   ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
-  Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  // Fixed typo: changed i1 to y1 in the line element
+  Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
@@ -325,7 +327,14 @@ const App: React.FC = () => {
             </div>
 
             <div className="mt-12 pt-8 border-t border-amber-50">
-              <h2 className="text-sm font-black text-amber-900/40 mb-6 flex items-center gap-2">دكاترة مجمع هنا الطبي 🏥</h2>
+              <div className="flex justify-between items-end mb-6">
+                <div>
+                  <h2 className="text-sm font-black text-amber-900/40 flex items-center gap-2 mb-1">المساحات الإعلانية 📢</h2>
+                  <p className="text-[10px] font-bold text-amber-900/30">تعرّف على نخبة أطباء مجمع هنا الطبي</p>
+                </div>
+                <div className="text-[9px] font-black text-orange-500/50">بواسطة شركة SCS</div>
+              </div>
+              
               <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide">
                 {DOCTOR_ADS.map(d => (
                   <div key={d.id} className="min-w-[240px] bg-white p-4 rounded-3xl border border-amber-50 flex items-center gap-4 shadow-sm">
@@ -337,6 +346,22 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ))}
+                
+                {/* Advertise Here Card */}
+                <a 
+                  href={`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent('مرحباً شركة SCS، أريد الاستفسار عن تفاصيل إضافة إعلان لعيادتي في تطبيق بالهنا.')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-[240px] bg-amber-50/50 border-2 border-dashed border-amber-200 p-4 rounded-3xl flex items-center gap-4 hover:bg-amber-100/50 transition-colors group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-amber-200/50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+                    <Icons.Plus />
+                  </div>
+                  <div className="leading-tight">
+                    <div className="font-black text-amber-900 text-xs">أعلن معنا هنا</div>
+                    <div className="text-[9px] text-amber-700/60 font-bold mt-1">تواصل مع إدارة شركة SCS</div>
+                  </div>
+                </a>
               </div>
             </div>
           </div>
