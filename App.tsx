@@ -275,7 +275,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFDFB] text-gray-800 font-['Cairo'] pb-20">
+    <div className="min-h-screen bg-[#FFFDFB] text-gray-800 font-['Cairo'] flex flex-col">
       <header className="bg-amber-950 text-white p-4 sticky top-0 z-50 flex justify-between items-center border-b-4 border-orange-500 shadow-xl">
         <div className="flex items-center gap-3">
           {view !== 'menu' && (
@@ -300,7 +300,7 @@ const App: React.FC = () => {
         </button>
       </header>
 
-      <main className="p-4 container mx-auto max-w-5xl">
+      <main className="p-4 container mx-auto max-w-5xl flex-1 pb-24">
         {view === 'menu' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -492,6 +492,12 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      <footer className="py-6 text-center mt-auto">
+        <p className="text-[10px] font-bold text-gray-400 opacity-60">
+          The website was designed by Dr. Ahmed Elmosalamy
+        </p>
+      </footer>
 
       {showAdminLogin && (
         <div className="fixed inset-0 bg-amber-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
