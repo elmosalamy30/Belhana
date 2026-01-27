@@ -75,3 +75,4 @@ export const DOCTOR_ADS: DoctorAd[] = [
 
 export const ADMIN_PASSWORD = "123";
 export const ADMIN_WHATSAPP = "201107223041";
+export const ADMIN_EMAIL = "scs.info.official@gmail.com";

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADMIN_WHATSAPP } from './constants';
+import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADMIN_WHATSAPP, ADMIN_EMAIL } from './constants';
 import { Drink, Order, OrderItem, CLINICS, DoctorAd } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
@@ -13,7 +13,8 @@ const Icons = {
   WhatsApp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
   Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-  ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+  ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+  Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
@@ -101,6 +102,31 @@ const App: React.FC = () => {
     } catch (e) { return false; }
   };
 
+  const sendEmailNotification = async (order: Order) => {
+    try {
+      const floorLabel = order.floorNumber === "0" ? "الأرضي" : `الدور ${order.floorNumber}`;
+      const itemsList = order.items.map(i => `${i.drinkName} (x${i.quantity})`).join(', ');
+      
+      const formData = new FormData();
+      formData.append('Order_ID', order.id);
+      formData.append('Location', `${floorLabel} - عيادة ${order.clinicNumber}`);
+      formData.append('Customer_Name', order.contactInfo);
+      formData.append('Order_Details', itemsList);
+      formData.append('Total_Price', `${order.totalPrice} EGP`);
+      formData.append('Notes', order.notes || 'No notes');
+      formData.append('_subject', `New Order from Bal Hana: #${order.id}`);
+      formData.append('_captcha', 'false');
+
+      // استخدام FormSubmit لإرسال البريد
+      await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
+        method: 'POST',
+        body: formData,
+      });
+    } catch (err) {
+      console.error("Failed to send email notification", err);
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
     const timer = setInterval(fetchOrders, view === 'admin' ? 5000 : 30000);
@@ -155,7 +181,10 @@ const App: React.FC = () => {
 
     const currentOrders = await fetchOrders() || orders;
     const updated = [...currentOrders, newOrder];
+    
+    // حفظ الطلب وإرسال إشعار بريدي في الخلفية
     await saveOrders(updated);
+    sendEmailNotification(newOrder); // إرسال البريد
     
     const floorLabel = newOrder.floorNumber === "0" ? "الأرضي" : `الدور ${newOrder.floorNumber}`;
     const locationDetails = `📍 *المكان:* ${floorLabel} | عيادة: ${newOrder.clinicNumber}`;
@@ -192,13 +221,47 @@ const App: React.FC = () => {
 
   const handleAdminLogin = () => {
     if (adminPassInput.trim() === ADMIN_PASSWORD) {
-      setView('admin');
+      setViewInternal('admin');
       setShowAdminLogin(false);
       setAdminPassInput("");
       setLoginError(false);
     } else {
       setLoginError(true);
     }
+  };
+
+  const downloadReport = () => {
+    if (orders.length === 0) {
+      alert("لا توجد بيانات لتحميلها");
+      return;
+    }
+
+    const headers = ["رقم الطلب", "التاريخ", "الوقت", "الدور", "رقم العيادة", "الاسم", "الطلبات", "الإجمالي", "الحالة", "ملاحظات"];
+    const rows = orders.map(o => {
+      const date = new Date(o.timestamp);
+      return [
+        o.id,
+        date.toLocaleDateString('ar-EG'),
+        date.toLocaleTimeString('ar-EG'),
+        o.floorNumber === "0" ? "الأرضي" : o.floorNumber,
+        o.clinicNumber,
+        o.contactInfo,
+        o.items.map(i => `${i.drinkName} (${i.quantity})`).join(' - '),
+        o.totalPrice,
+        o.status === 'pending' ? 'جاري التنفيذ' : 'تم التوصيل',
+        o.notes || ''
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `تقرير_بالهنا_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const filteredOrders = orders.filter(o => adminFilter === 'all' ? true : o.status === adminFilter).sort((a,b) => b.timestamp - a.timestamp);
@@ -376,7 +439,8 @@ const App: React.FC = () => {
                     {f === 'pending' ? 'الواردة' : f === 'completed' ? 'المنتهية' : 'الكل'}
                   </button>
                 ))}
-                <button onClick={clearHistory} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"><Icons.Trash /></button>
+                <button onClick={downloadReport} className="p-2 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors" title="تحميل التقرير"><Icons.Download /></button>
+                <button onClick={clearHistory} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="مسح المنتهي"><Icons.Trash /></button>
               </div>
             </div>
 
