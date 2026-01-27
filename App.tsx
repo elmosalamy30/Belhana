@@ -41,6 +41,17 @@ const App: React.FC = () => {
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
 
+  // Rooms Logic
+  const getRoomsForFloor = (floor: string) => {
+    if (floor === "0") return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
+    if (floor === "1") return Array.from({ length: 25 }, (_, i) => `F${(i + 1).toString().padStart(2, '0')}`);
+    if (floor === "2") return Array.from({ length: 25 }, (_, i) => `S${(i + 1).toString().padStart(2, '0')}`);
+    if (floor === "3") return Array.from({ length: 25 }, (_, i) => (301 + i).toString());
+    return [];
+  };
+
+  const availableRooms = useMemo(() => getRoomsForFloor(floorNumber), [floorNumber]);
+
   // Function to change view and push to history
   const setView = (newView: ViewState, replace: boolean = false) => {
     if (newView === view) return;
@@ -52,11 +63,8 @@ const App: React.FC = () => {
     setViewInternal(newView);
   };
 
-  // Sync state with history events (browser back/forward button)
   useEffect(() => {
-    // Initial history state
     window.history.replaceState({ view: 'menu' }, '', '');
-
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.view) {
         setViewInternal(event.state.view);
@@ -64,7 +72,6 @@ const App: React.FC = () => {
         setViewInternal('menu');
       }
     };
-
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -128,15 +135,18 @@ const App: React.FC = () => {
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedClinic || !contactInfo.trim()) { alert("يرجى اختيار العيادة والاسم"); return; }
+    if (!floorNumber || !clinicNumber || !contactInfo.trim()) { 
+      alert("يرجى اختيار الدور ورقم العيادة وكتابة الاسم"); 
+      return; 
+    }
     setIsPlacingOrder(true);
     const newOrder: Order = {
       id: Math.random().toString(36).substr(2, 5).toUpperCase(),
       items: Object.values(cart).map((i: CartItem) => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
       totalPrice: cartTotalPrice,
-      clinicName: selectedClinic,
-      clinicNumber: clinicNumber.trim() || undefined,
-      floorNumber: floorNumber.trim() || undefined,
+      clinicName: selectedClinic || "عيادة المجمع",
+      clinicNumber: clinicNumber,
+      floorNumber: floorNumber,
       contactInfo: contactInfo.trim(),
       status: 'pending',
       timestamp: Date.now(),
@@ -147,16 +157,13 @@ const App: React.FC = () => {
     const updated = [...currentOrders, newOrder];
     await saveOrders(updated);
     
-    const locationDetails = [
-      newOrder.clinicName,
-      newOrder.floorNumber ? `الدور: ${newOrder.floorNumber}` : '',
-      newOrder.clinicNumber ? `عيادة: ${newOrder.clinicNumber}` : ''
-    ].filter(Boolean).join(' | ');
+    const floorLabel = newOrder.floorNumber === "0" ? "الأرضي" : `الدور ${newOrder.floorNumber}`;
+    const locationDetails = `📍 *المكان:* ${floorLabel} | عيادة: ${newOrder.clinicNumber}`;
 
     const msg = encodeURIComponent(
       `☕ *طلب مشروبات من تطبيق بالهنا*\n` +
       `--------------------------\n` +
-      `📍 *المكان:* ${locationDetails}\n` +
+      `${locationDetails}\n` +
       `👤 *الاسم:* ${newOrder.contactInfo}\n` +
       `🥤 *الطلبات:* ${newOrder.items.map(i => `${i.drinkName} (x${i.quantity})`).join('، ')}\n` +
       `💰 *الإجمالي:* ${newOrder.totalPrice} ج.م\n` +
@@ -197,11 +204,10 @@ const App: React.FC = () => {
   const filteredOrders = orders.filter(o => adminFilter === 'all' ? true : o.status === adminFilter).sort((a,b) => b.timestamp - a.timestamp);
 
   const handleBackToMenu = () => {
-    // If we're in history, just go back
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      setView('menu');
+      setViewInternal('menu');
     }
   };
 
@@ -292,23 +298,61 @@ const App: React.FC = () => {
             </div>
 
             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-amber-50 space-y-5">
-              <select value={selectedClinic} onChange={e => setSelectedClinic(e.target.value)} className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500">
-                <option value="">أين أنت الآن؟ (اختر العيادة)</option>
-                {CLINICS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-amber-900/50 mr-2">1. اختر الدور</label>
+                <select 
+                  value={floorNumber} 
+                  onChange={e => { setFloorNumber(e.target.value); setClinicNumber(""); }} 
+                  className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500"
+                >
+                  <option value="">اختر الدور...</option>
+                  <option value="0">الدور الأرضي (0)</option>
+                  <option value="1">الدور الأول (1)</option>
+                  <option value="2">الدور الثاني (2)</option>
+                  <option value="3">الدور الثالث (3)</option>
+                </select>
+              </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <input value={floorNumber} onChange={e => setFloorNumber(e.target.value)} placeholder="رقم الدور" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
-                <input value={clinicNumber} onChange={e => setClinicNumber(e.target.value)} placeholder="رقم العيادة" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
+              {floorNumber && (
+                <div className="space-y-2 animate-in fade-in duration-300">
+                  <label className="text-xs font-black text-amber-900/50 mr-2">2. اختر رقم العيادة</label>
+                  <select 
+                    value={clinicNumber} 
+                    onChange={e => setClinicNumber(e.target.value)} 
+                    className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500"
+                  >
+                    <option value="">اختر رقم العيادة...</option>
+                    {availableRooms.map(room => (
+                      <option key={room} value={room}>{room}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-xs font-black text-amber-900/50 mr-2">3. الاسم والبيانات</label>
+                <input 
+                  value={contactInfo} 
+                  onChange={e => setContactInfo(e.target.value)} 
+                  placeholder="اسم الدكتور أو الموظف" 
+                  className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" 
+                />
               </div>
 
-              <input value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="اسم الدكتور أو الموظف" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
-              <input value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="ملاحظات (مثلاً: سكر زيادة)" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
+              <div className="space-y-2">
+                <label className="text-xs font-black text-amber-900/50 mr-2">4. الإضافات والملاحظات</label>
+                <input 
+                  value={orderNote} 
+                  onChange={e => setOrderNote(e.target.value)} 
+                  placeholder="ملاحظات (مثلاً: سكر زيادة)" 
+                  className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" 
+                />
+              </div>
               
               <button 
                 onClick={handlePlaceOrder}
-                disabled={isPlacingOrder}
-                className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder ? 'bg-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}
+                disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim()}
+                className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim() ? 'bg-gray-200 text-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}
               >
                 {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب 🚀'}
               </button>
@@ -344,10 +388,11 @@ const App: React.FC = () => {
                   <div key={o.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-r-8 transition-all ${o.status === 'pending' ? 'border-orange-500 scale-[1.02] shadow-orange-100' : 'border-gray-200 opacity-60'}`}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <div className="font-black text-xl text-amber-950 leading-tight">{o.clinicName}</div>
+                        <div className="font-black text-xl text-amber-950 leading-tight">
+                          {o.floorNumber === "0" ? "الدور الأرضي" : `الدور ${o.floorNumber}`}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
-                          {o.floorNumber && <span className="text-[10px] bg-amber-100 px-2 py-0.5 rounded-lg font-bold">الدور: {o.floorNumber}</span>}
-                          {o.clinicNumber && <span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-lg font-bold">العيادة: {o.clinicNumber}</span>}
+                          <span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-lg font-bold">عيادة: {o.clinicNumber}</span>
                         </div>
                         <div className="text-xs font-bold text-orange-600 mt-2 flex items-center gap-1"><Icons.User /> {o.contactInfo}</div>
                       </div>
