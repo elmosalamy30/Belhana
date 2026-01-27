@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ORDER_WHATSAPP, ADS_WHATSAPP, ADMIN_EMAIL } from './constants';
-import { Drink, Order, OrderItem, CLINICS, DoctorAd } from './types';
+import { Drink, Order, OrderItem, CLINICS, DoctorAd, DrinkCategory } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
 const GLOBAL_SYNC_ID = "bal_hana_v7_final_secure_sync_2025"; 
@@ -15,15 +15,28 @@ const Icons = {
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
   ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
   Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-  Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Mail: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  XCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
 
 type ViewState = 'menu' | 'cart' | 'admin';
 
+const CATEGORIES: { id: 'all' | DrinkCategory; label: string; icon: string }[] = [
+  { id: 'all', label: 'الكل', icon: '🍽️' },
+  { id: 'hot', label: 'مشروبات ساخنة', icon: '☕' },
+  { id: 'coffee', label: 'قهوة', icon: '🤎' },
+  { id: 'cold', label: 'مشروبات غازية', icon: '🥤' },
+  { id: 'juice', label: 'عصائر', icon: '🧃' },
+  { id: 'food', label: 'مأكولات جاهزة', icon: '🍜' },
+];
+
 const App: React.FC = () => {
   const [view, setViewInternal] = useState<ViewState>('menu');
+  const [activeCategory, setActiveCategory] = useState<'all' | DrinkCategory>('all');
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [selectedClinic, setSelectedClinic] = useState("");
@@ -38,10 +51,25 @@ const App: React.FC = () => {
   const [loginError, setLoginError] = useState(false);
   const [lastOrderLink, setLastOrderLink] = useState("");
   const [lastSyncTime, setLastSyncTime] = useState("-");
-  const [adminFilter, setAdminFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+  const [adminFilter, setAdminFilter] = useState<'pending' | 'completed' | 'all' | 'cancelled'>('pending');
+  const [isSendingReport, setIsSendingReport] = useState(false);
   
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
+
+  const filteredMenuItems = useMemo(() => {
+    if (activeCategory === 'all') return MENU_ITEMS;
+    return MENU_ITEMS.filter(item => item.category === activeCategory);
+  }, [activeCategory]);
+
+  const stats = useMemo(() => {
+    return {
+      pending: orders.filter(o => o.status === 'pending').length,
+      completed: orders.filter(o => o.status === 'completed').length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+      total: orders.length
+    };
+  }, [orders]);
 
   const getRoomsForFloor = (floor: string) => {
     if (floor === "0") return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
@@ -122,6 +150,66 @@ const App: React.FC = () => {
       });
     } catch (err) {
       console.error("Failed to send email notification", err);
+    }
+  };
+
+  const sendDailyReportToEmail = async () => {
+    if (orders.length === 0) {
+      alert("لا توجد طلبات لإرسال جرد بها.");
+      return;
+    }
+
+    if (!confirm("هل تريد إرسال تقرير الجرد الحالي إلى البريد الإلكتروني؟")) return;
+
+    setIsSendingReport(true);
+    try {
+      const summary: Record<string, { qty: number; total: number }> = {};
+      let totalRevenue = 0;
+      let completedCount = 0;
+
+      orders.forEach(order => {
+        if (order.status === 'completed') {
+          completedCount++;
+          order.items.forEach(item => {
+            if (!summary[item.drinkName]) {
+              summary[item.drinkName] = { qty: 0, total: 0 };
+            }
+            summary[item.drinkName].qty += item.quantity;
+            summary[item.drinkName].total += (item.price * item.quantity);
+            totalRevenue += (item.price * item.quantity);
+          });
+        }
+      });
+
+      const reportText = Object.entries(summary)
+        .map(([name, data]) => `- ${name}: ${data.qty} قطعة (إجمالي ${data.total} ج.م)`)
+        .join('\n');
+
+      const formData = new FormData();
+      formData.append('Date', new Date().toLocaleDateString('ar-EG'));
+      formData.append('Time', new Date().toLocaleTimeString('ar-EG'));
+      formData.append('Total_Orders_Completed', completedCount.toString());
+      formData.append('Total_Revenue', `${totalRevenue} EGP`);
+      formData.append('Inventory_Details', reportText || "لا توجد مبيعات مكتملة بعد.");
+      formData.append('_subject', `Daily Inventory Report - Bal Hana - ${new Date().toLocaleDateString()}`);
+      formData.append('_template', 'table');
+      formData.append('_captcha', 'false');
+
+      const res = await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        alert("تم إرسال تقرير الجرد بنجاح إلى Gmail.");
+      } else {
+        throw new Error("Failed to send email");
+      }
+    } catch (err) {
+      alert("حدث خطأ أثناء إرسال التقرير. يرجى المحاولة لاحقاً.");
+      console.error(err);
+    } finally {
+      setIsSendingReport(false);
     }
   };
 
@@ -209,7 +297,7 @@ const App: React.FC = () => {
   };
 
   const clearHistory = async () => {
-    if (confirm("هل تريد مسح جميع الطلبات المنتهية؟")) {
+    if (confirm("هل تريد مسح جميع الطلبات المنتهية والملغاة؟")) {
       const active = orders.filter(o => o.status === 'pending');
       setOrders(active);
       await saveOrders(active);
@@ -244,7 +332,7 @@ const App: React.FC = () => {
         o.contactInfo,
         o.items.map(i => `${i.drinkName} (${i.quantity})`).join(' - '),
         o.totalPrice,
-        o.status === 'pending' ? 'جاري التنفيذ' : 'تم التوصيل',
+        o.status === 'pending' ? 'جاري التنفيذ' : o.status === 'completed' ? 'تم التوصيل' : 'تم الإلغاء',
         o.notes || ''
       ];
     });
@@ -288,15 +376,36 @@ const App: React.FC = () => {
         </button>
       </header>
 
+      {view === 'menu' && (
+        <nav className="bg-white/80 backdrop-blur-md sticky top-[72px] z-40 border-b border-amber-50 shadow-sm">
+          <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide container mx-auto max-w-5xl no-scrollbar">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl whitespace-nowrap text-xs font-black transition-all border-2 ${
+                  activeCategory === cat.id 
+                    ? 'bg-amber-950 text-white border-amber-950 shadow-md scale-105' 
+                    : 'bg-white text-amber-900/60 border-amber-50 hover:bg-amber-50 hover:border-amber-100'
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
+
       <main className="p-4 container mx-auto max-w-5xl flex-1 pb-24">
         {view === 'menu' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {MENU_ITEMS.map(drink => (
+              {filteredMenuItems.map(drink => (
                 <div key={drink.id} className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-amber-50 flex h-32 hover:shadow-md transition-shadow">
-                  <img src={drink.image} className="w-32 h-full object-cover" alt={drink.name} />
+                  <img src={drink.image} className="w-32 h-full object-cover" alt={drink.name} loading="lazy" />
                   <div className="p-4 flex-1 flex flex-col justify-between">
-                    <h3 className="font-black text-amber-950">{drink.name}</h3>
+                    <h3 className="font-black text-amber-950 text-sm">{drink.name}</h3>
                     <div className="flex justify-between items-center">
                       <span className="text-orange-600 font-black">{drink.price} ج.م</span>
                       <div className="flex items-center gap-3 bg-amber-50 rounded-2xl p-1">
@@ -310,6 +419,9 @@ const App: React.FC = () => {
                   </div>
                 </div>
               ))}
+              {filteredMenuItems.length === 0 && (
+                <div className="col-span-full py-20 text-center opacity-20 font-black italic">لا توجد أصناف في هذا التصنيف حالياً..</div>
+              )}
             </div>
 
             <div className="mt-12 pt-8 border-t border-amber-50">
@@ -411,6 +523,26 @@ const App: React.FC = () => {
 
         {view === 'admin' && (
           <div className="space-y-6 animate-in fade-in duration-500">
+            {/* ملخص إحصائي سريع بارز جداً في الأعلى */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-orange-100 text-center flex flex-col items-center justify-center">
+                <div className="text-[11px] font-black text-orange-500/60 mb-1 flex items-center gap-1"><Icons.Clock /> بانتظار التحضير</div>
+                <div className="text-3xl font-black text-orange-600">{stats.pending}</div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-emerald-100 text-center flex flex-col items-center justify-center">
+                <div className="text-[11px] font-black text-emerald-500/60 mb-1 flex items-center gap-1"><Icons.Check /> تم التوصيل</div>
+                <div className="text-3xl font-black text-emerald-600">{stats.completed}</div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-red-100 text-center flex flex-col items-center justify-center">
+                <div className="text-[11px] font-black text-red-400/60 mb-1 flex items-center gap-1"><Icons.XCircle /> طلبات ملغاة</div>
+                <div className="text-3xl font-black text-red-500">{stats.cancelled}</div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-amber-50 text-center flex flex-col items-center justify-center">
+                <div className="text-[11px] font-black text-amber-900/40 mb-1">إجمالي اليوم</div>
+                <div className="text-3xl font-black text-amber-950">{stats.total}</div>
+              </div>
+            </div>
+
             <div className="bg-white p-5 rounded-3xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 border border-amber-100">
               <div className="text-center md:text-right">
                 <h2 className="font-black text-amber-950 text-lg">مركز الطلبات الحية</h2>
@@ -420,18 +552,33 @@ const App: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
-                {['pending', 'completed', 'all'].map(f => (
-                  <button key={f} onClick={() => setAdminFilter(f as any)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${adminFilter === f ? 'bg-orange-600 text-white shadow-md' : 'bg-amber-50 text-amber-900'}`}>
-                    {f === 'pending' ? 'الواردة' : f === 'completed' ? 'المنتهية' : 'الكل'}
+                {[
+                  { id: 'pending', label: 'الواردة' },
+                  { id: 'completed', label: 'المنتهية' },
+                  { id: 'cancelled', label: 'الملغاة' },
+                  { id: 'all', label: 'الكل' }
+                ].map(f => (
+                  <button key={f.id} onClick={() => setAdminFilter(f.id as any)} className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all ${adminFilter === f.id ? 'bg-orange-600 text-white shadow-md' : 'bg-amber-50 text-amber-900'}`}>
+                    {f.label}
                   </button>
                 ))}
-                <button onClick={downloadReport} className="p-2 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors" title="تحميل التقرير"><Icons.Download /></button>
-                <button onClick={clearHistory} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="مسح المنتهي"><Icons.Trash /></button>
+                <div className="w-[1px] bg-amber-100 mx-1 hidden md:block"></div>
+                <button 
+                  onClick={sendDailyReportToEmail} 
+                  disabled={isSendingReport}
+                  className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-2 text-xs font-black disabled:opacity-50" 
+                  title="إرسال الجرد لـ Gmail"
+                >
+                  <Icons.Mail /> {isSendingReport ? 'جاري الإرسال..' : 'إرسال الجرد'}
+                </button>
+                <button onClick={downloadReport} className="p-2 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors" title="تحميل تقرير CSV"><Icons.Download /></button>
+                <button onClick={clearHistory} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="مسح الأرشيف"><Icons.Trash /></button>
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredOrders.length === 0 ? <div className="col-span-full py-20 text-center opacity-20 font-black italic">لا توجد طلبات لعرضها..</div> : filteredOrders.map(o => (
-                <div key={o.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-r-8 transition-all ${o.status === 'pending' ? 'border-orange-500 scale-[1.02] shadow-orange-100' : 'border-gray-200 opacity-60'}`}>
+                <div key={o.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-r-8 transition-all ${o.status === 'pending' ? 'border-orange-500 scale-[1.02] shadow-orange-100' : o.status === 'completed' ? 'border-emerald-200' : 'border-red-100 opacity-60'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="font-black text-xl text-amber-950 leading-tight">{o.floorNumber === "0" ? "الدور الأرضي" : `الدور ${o.floorNumber}`}</div>
@@ -447,7 +594,14 @@ const App: React.FC = () => {
                   <div className="flex justify-between items-center pt-2">
                     <span className="font-black text-lg">{o.totalPrice} ج.م</span>
                     <div className="flex gap-2">
-                      {o.status === 'pending' ? <button onClick={() => updateStatus(o.id, 'completed')} className="bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg hover:bg-emerald-600 transition-colors flex items-center gap-2">تم التوصيل <Icons.Check /></button> : <button onClick={() => updateStatus(o.id, 'pending')} className="text-[10px] font-black text-amber-900/40 underline">إعادة فتح</button>}
+                      {o.status === 'pending' ? (
+                        <>
+                          <button onClick={() => updateStatus(o.id, 'completed')} className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:bg-emerald-600 transition-colors flex items-center gap-1">تم <Icons.Check /></button>
+                          <button onClick={() => updateStatus(o.id, 'cancelled')} className="bg-red-50 text-red-600 px-3 py-2 rounded-xl text-[10px] font-black hover:bg-red-100 transition-colors">إلغاء</button>
+                        </>
+                      ) : (
+                        <button onClick={() => updateStatus(o.id, 'pending')} className="text-[10px] font-black text-amber-900/40 underline">إعادة فتح</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -509,6 +663,8 @@ const App: React.FC = () => {
       )}
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slide-in-bottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }

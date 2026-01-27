@@ -1,5 +1,5 @@
 
-export type DrinkCategory = 'hot' | 'cold';
+export type DrinkCategory = 'hot' | 'coffee' | 'cold' | 'juice' | 'food';
 
 export interface Drink {
   id: string;
