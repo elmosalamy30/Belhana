@@ -74,5 +74,6 @@ export const DOCTOR_ADS: DoctorAd[] = [
 ];
 
 export const ADMIN_PASSWORD = "123";
-export const ADMIN_WHATSAPP = "201107223041";
+export const ORDER_WHATSAPP = "201107223042"; // الرقم الجديد لتأكيد الأوردر
+export const ADS_WHATSAPP = "201107223041";   // رقم التواصل الإعلاني (SCS)
 export const ADMIN_EMAIL = "scs.info.official@gmail.com";

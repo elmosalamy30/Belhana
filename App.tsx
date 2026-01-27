@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADMIN_WHATSAPP, ADMIN_EMAIL } from './constants';
+import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ORDER_WHATSAPP, ADS_WHATSAPP, ADMIN_EMAIL } from './constants';
 import { Drink, Order, OrderItem, CLINICS, DoctorAd } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
@@ -14,7 +14,6 @@ const Icons = {
   Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
   ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
-  // Fixed typo: changed i1 to y1 in the line element
   Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
   Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 };
@@ -44,7 +43,6 @@ const App: React.FC = () => {
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
 
-  // Rooms Logic
   const getRoomsForFloor = (floor: string) => {
     if (floor === "0") return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
     if (floor === "1") return Array.from({ length: 25 }, (_, i) => `F${(i + 1).toString().padStart(2, '0')}`);
@@ -55,7 +53,6 @@ const App: React.FC = () => {
 
   const availableRooms = useMemo(() => getRoomsForFloor(floorNumber), [floorNumber]);
 
-  // Function to change view and push to history
   const setView = (newView: ViewState, replace: boolean = false) => {
     if (newView === view) return;
     if (replace) {
@@ -119,7 +116,6 @@ const App: React.FC = () => {
       formData.append('_subject', `New Order from Bal Hana: #${order.id}`);
       formData.append('_captcha', 'false');
 
-      // استخدام FormSubmit لإرسال البريد
       await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
         method: 'POST',
         body: formData,
@@ -184,9 +180,8 @@ const App: React.FC = () => {
     const currentOrders = await fetchOrders() || orders;
     const updated = [...currentOrders, newOrder];
     
-    // حفظ الطلب وإرسال إشعار بريدي في الخلفية
     await saveOrders(updated);
-    sendEmailNotification(newOrder); // إرسال البريد
+    sendEmailNotification(newOrder);
     
     const floorLabel = newOrder.floorNumber === "0" ? "الأرضي" : `الدور ${newOrder.floorNumber}`;
     const locationDetails = `📍 *المكان:* ${floorLabel} | عيادة: ${newOrder.clinicNumber}`;
@@ -200,7 +195,7 @@ const App: React.FC = () => {
       `💰 *الإجمالي:* ${newOrder.totalPrice} ج.م\n` +
       (newOrder.notes ? `📝 *ملاحظات:* ${newOrder.notes}` : '')
     );
-    setLastOrderLink(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`);
+    setLastOrderLink(`https://wa.me/${ORDER_WHATSAPP}?text=${msg}`);
     setCart({});
     setIsPlacingOrder(false);
     setShowSuccessModal(true);
@@ -237,7 +232,6 @@ const App: React.FC = () => {
       alert("لا توجد بيانات لتحميلها");
       return;
     }
-
     const headers = ["رقم الطلب", "التاريخ", "الوقت", "الدور", "رقم العيادة", "الاسم", "الطلبات", "الإجمالي", "الحالة", "ملاحظات"];
     const rows = orders.map(o => {
       const date = new Date(o.timestamp);
@@ -254,7 +248,6 @@ const App: React.FC = () => {
         o.notes || ''
       ];
     });
-
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -281,11 +274,7 @@ const App: React.FC = () => {
       <header className="bg-amber-950 text-white p-4 sticky top-0 z-50 flex justify-between items-center border-b-4 border-orange-500 shadow-xl">
         <div className="flex items-center gap-3">
           {view !== 'menu' && (
-            <button 
-              onClick={handleBackToMenu}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              aria-label="الرجوع"
-            >
+            <button onClick={handleBackToMenu} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label="الرجوع">
               <Icons.ArrowRight />
             </button>
           )}
@@ -294,10 +283,7 @@ const App: React.FC = () => {
           </div>
           <h1 className="font-black text-xl tracking-tight">بالهنا</h1>
         </div>
-        <button 
-          onClick={() => view === 'admin' ? handleBackToMenu() : setShowAdminLogin(true)}
-          className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-[11px] font-bold border border-white/5 transition-all"
-        >
+        <button onClick={() => view === 'admin' ? handleBackToMenu() : setShowAdminLogin(true)} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-[11px] font-bold border border-white/5 transition-all">
           {view === 'admin' ? 'الرجوع للمنيو' : 'لوحة الإدارة'}
         </button>
       </header>
@@ -347,9 +333,8 @@ const App: React.FC = () => {
                   </div>
                 ))}
                 
-                {/* Advertise Here Card */}
                 <a 
-                  href={`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent('مرحباً شركة SCS، أريد الاستفسار عن تفاصيل إضافة إعلان لعيادتي في تطبيق بالهنا.')}`}
+                  href={`https://wa.me/${ADS_WHATSAPP}?text=${encodeURIComponent('مرحباً شركة SCS، أريد الاستفسار عن تفاصيل إضافة إعلان لعيادتي في تطبيق بالهنا.')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="min-w-[240px] bg-amber-50/50 border-2 border-dashed border-amber-200 p-4 rounded-3xl flex items-center gap-4 hover:bg-amber-100/50 transition-colors group"
@@ -388,11 +373,7 @@ const App: React.FC = () => {
             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-amber-50 space-y-5">
               <div className="space-y-2">
                 <label className="text-xs font-black text-amber-900/50 mr-2">1. اختر الدور</label>
-                <select 
-                  value={floorNumber} 
-                  onChange={e => { setFloorNumber(e.target.value); setClinicNumber(""); }} 
-                  className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500"
-                >
+                <select value={floorNumber} onChange={e => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500">
                   <option value="">اختر الدور...</option>
                   <option value="0">الدور الأرضي (0)</option>
                   <option value="1">الدور الأول (1)</option>
@@ -404,44 +385,24 @@ const App: React.FC = () => {
               {floorNumber && (
                 <div className="space-y-2 animate-in fade-in duration-300">
                   <label className="text-xs font-black text-amber-900/50 mr-2">2. اختر رقم العيادة</label>
-                  <select 
-                    value={clinicNumber} 
-                    onChange={e => setClinicNumber(e.target.value)} 
-                    className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500"
-                  >
+                  <select value={clinicNumber} onChange={e => setClinicNumber(e.target.value)} className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500">
                     <option value="">اختر رقم العيادة...</option>
-                    {availableRooms.map(room => (
-                      <option key={room} value={room}>{room}</option>
-                    ))}
+                    {availableRooms.map(room => <option key={room} value={room}>{room}</option>)}
                   </select>
                 </div>
               )}
 
               <div className="space-y-2">
                 <label className="text-xs font-black text-amber-900/50 mr-2">3. الاسم والبيانات</label>
-                <input 
-                  value={contactInfo} 
-                  onChange={e => setContactInfo(e.target.value)} 
-                  placeholder="اسم الدكتور أو الموظف" 
-                  className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" 
-                />
+                <input value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="اسم الدكتور أو الموظف" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-black text-amber-900/50 mr-2">4. الإضافات والملاحظات</label>
-                <input 
-                  value={orderNote} 
-                  onChange={e => setOrderNote(e.target.value)} 
-                  placeholder="ملاحظات (مثلاً: سكر زيادة)" 
-                  className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" 
-                />
+                <input value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="ملاحظات (مثلاً: سكر زيادة)" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
               </div>
               
-              <button 
-                onClick={handlePlaceOrder}
-                disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim()}
-                className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim() ? 'bg-gray-200 text-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}
-              >
+              <button onClick={handlePlaceOrder} disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim()} className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim() ? 'bg-gray-200 text-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}>
                 {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب 🚀'}
               </button>
             </div>
@@ -468,60 +429,36 @@ const App: React.FC = () => {
                 <button onClick={clearHistory} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="مسح المنتهي"><Icons.Trash /></button>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredOrders.length === 0 ? (
-                <div className="col-span-full py-20 text-center opacity-20 font-black italic">لا توجد طلبات لعرضها..</div>
-              ) : (
-                filteredOrders.map(o => (
-                  <div key={o.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-r-8 transition-all ${o.status === 'pending' ? 'border-orange-500 scale-[1.02] shadow-orange-100' : 'border-gray-200 opacity-60'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <div className="font-black text-xl text-amber-950 leading-tight">
-                          {o.floorNumber === "0" ? "الدور الأرضي" : `الدور ${o.floorNumber}`}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-lg font-bold">عيادة: {o.clinicNumber}</span>
-                        </div>
-                        <div className="text-xs font-bold text-orange-600 mt-2 flex items-center gap-1"><Icons.User /> {o.contactInfo}</div>
-                      </div>
-                      <span className="text-[9px] font-black bg-amber-50 px-2 py-1 rounded-lg">#{o.id}</span>
+              {filteredOrders.length === 0 ? <div className="col-span-full py-20 text-center opacity-20 font-black italic">لا توجد طلبات لعرضها..</div> : filteredOrders.map(o => (
+                <div key={o.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-r-8 transition-all ${o.status === 'pending' ? 'border-orange-500 scale-[1.02] shadow-orange-100' : 'border-gray-200 opacity-60'}`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="font-black text-xl text-amber-950 leading-tight">{o.floorNumber === "0" ? "الدور الأرضي" : `الدور ${o.floorNumber}`}</div>
+                      <div className="flex items-center gap-2 mt-1"><span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-lg font-bold">عيادة: {o.clinicNumber}</span></div>
+                      <div className="text-xs font-bold text-orange-600 mt-2 flex items-center gap-1"><Icons.User /> {o.contactInfo}</div>
                     </div>
-                    
-                    <div className="bg-amber-50/30 p-4 rounded-2xl mb-5 space-y-2">
-                      {o.items.map((i, idx) => (
-                        <div key={idx} className="text-sm font-black flex justify-between">
-                          <span>{i.drinkName}</span>
-                          <span className="text-orange-600">x{i.quantity}</span>
-                        </div>
-                      ))}
-                      {o.notes && <div className="text-[10px] text-blue-600 pt-3 border-t mt-3 font-bold italic">📝 {o.notes}</div>}
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="font-black text-lg">{o.totalPrice} ج.م</span>
-                      <div className="flex gap-2">
-                        {o.status === 'pending' ? (
-                          <button onClick={() => updateStatus(o.id, 'completed')} className="bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg hover:bg-emerald-600 transition-colors flex items-center gap-2">
-                            تم التوصيل <Icons.Check />
-                          </button>
-                        ) : (
-                          <button onClick={() => updateStatus(o.id, 'pending')} className="text-[10px] font-black text-amber-900/40 underline">إعادة فتح</button>
-                        )}
-                      </div>
+                    <span className="text-[9px] font-black bg-amber-50 px-2 py-1 rounded-lg">#{o.id}</span>
+                  </div>
+                  <div className="bg-amber-50/30 p-4 rounded-2xl mb-5 space-y-2">
+                    {o.items.map((i, idx) => <div key={idx} className="text-sm font-black flex justify-between"><span>{i.drinkName}</span><span className="text-orange-600">x{i.quantity}</span></div>)}
+                    {o.notes && <div className="text-[10px] text-blue-600 pt-3 border-t mt-3 font-bold italic">📝 {o.notes}</div>}
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="font-black text-lg">{o.totalPrice} ج.م</span>
+                    <div className="flex gap-2">
+                      {o.status === 'pending' ? <button onClick={() => updateStatus(o.id, 'completed')} className="bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg hover:bg-emerald-600 transition-colors flex items-center gap-2">تم التوصيل <Icons.Check /></button> : <button onClick={() => updateStatus(o.id, 'pending')} className="text-[10px] font-black text-amber-900/40 underline">إعادة فتح</button>}
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
         )}
       </main>
 
       <footer className="py-6 text-center mt-auto">
-        <p className="text-[10px] font-bold text-gray-400 opacity-60">
-          The website was designed by Dr. Ahmed Elmosalamy
-        </p>
+        <p className="text-[10px] font-bold text-gray-400 opacity-60">The website was designed by Dr. Ahmed Elmosalamy</p>
       </footer>
 
       {showAdminLogin && (
@@ -530,15 +467,7 @@ const App: React.FC = () => {
             <div className="text-4xl">🔐</div>
             <h2 className="text-xl font-black">الدخول للمسؤول</h2>
             <div className="space-y-2">
-              <input 
-                type="password" 
-                value={adminPassInput}
-                onChange={e => { setAdminPassInput(e.target.value); setLoginError(false); }}
-                onKeyPress={e => e.key === 'Enter' && handleAdminLogin()}
-                autoFocus
-                placeholder="كلمة المرور"
-                className={`w-full p-4 rounded-2xl bg-amber-50 border-2 font-black text-center text-xl outline-none transition-all ${loginError ? 'border-red-500 animate-shake' : 'border-transparent focus:border-orange-500'}`}
-              />
+              <input type="password" value={adminPassInput} onChange={e => { setAdminPassInput(e.target.value); setLoginError(false); }} onKeyPress={e => e.key === 'Enter' && handleAdminLogin()} autoFocus placeholder="كلمة المرور" className={`w-full p-4 rounded-2xl bg-amber-50 border-2 font-black text-center text-xl outline-none transition-all ${loginError ? 'border-red-500 animate-shake' : 'border-transparent focus:border-orange-500'}`} />
               {loginError && <p className="text-xs text-red-500 font-bold">كلمة المرور غير صحيحة!</p>}
               <p className="text-[10px] text-gray-400 mt-2">كلمة المرور الافتراضية هي 123</p>
             </div>
@@ -555,10 +484,7 @@ const App: React.FC = () => {
           <button onClick={() => setView('cart')} className="w-full bg-amber-950 text-white p-5 rounded-3xl shadow-2xl flex justify-between items-center border-b-4 border-orange-600 active:scale-95 transition-transform">
             <div className="flex items-center gap-4">
               <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a: number, b: CartItem) => a + b.quantity, 0)}</div>
-              <div className="text-right">
-                <div className="text-xs opacity-60 font-bold">عرض السلة</div>
-                <div className="font-black text-lg">إتمام الطلب</div>
-              </div>
+              <div className="text-right"><div className="text-xs opacity-60 font-bold">عرض السلة</div><div className="font-black text-lg">إتمام الطلب</div></div>
             </div>
             <div className="font-black text-xl">{cartTotalPrice} ج.م</div>
           </button>
@@ -573,25 +499,14 @@ const App: React.FC = () => {
               <h2 className="text-3xl font-black text-amber-950">شكراً لك!</h2>
               <p className="text-sm font-bold text-gray-400">تم تسجيل طلبك في نظام المجمع.</p>
             </div>
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-[11px] font-bold text-emerald-700">
-              يرجى الضغط على الزر أدناه لإرسال الطلب عبر واتساب لضمان سرعة التوصيل ⬇️
-            </div>
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-[11px] font-bold text-emerald-700">يرجى الضغط على الزر أدناه لإرسال الطلب عبر واتساب لضمان سرعة التوصيل ⬇️</div>
             <div className="flex flex-col gap-3">
-              <a 
-                href={lastOrderLink} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                onClick={() => setShowSuccessModal(false)}
-                className="bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3"
-              >
-                تأكيد عبر واتساب <Icons.WhatsApp />
-              </a>
+              <a href={lastOrderLink} target="_blank" rel="noopener noreferrer" onClick={() => setShowSuccessModal(false)} className="bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3">تأكيد عبر واتساب <Icons.WhatsApp /></a>
               <button onClick={() => setShowSuccessModal(false)} className="text-xs font-black text-gray-400 py-2">إغلاق وتصفح المنيو</button>
             </div>
           </div>
         </div>
       )}
-
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
