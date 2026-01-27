@@ -56,7 +56,7 @@ export const DOCTOR_ADS: DoctorAd[] = [
   { id: 'd3', name: 'د. محمد حسن', specialty: 'استشاري أمراض الباطنة', location: 'عيادة الباطنة - الدور الثاني', image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=300&h=300&auto=format&fit=crop' },
 ];
 
-export const ADMIN_PASSWORD = "123";
+export const ADMIN_PASSWORD = "123456789";
 export const ORDER_WHATSAPP = "201107223042"; // الرقم الجديد لتأكيد الأوردر
 export const ADS_WHATSAPP = "201107223041";   // رقم التواصل الإعلاني (SCS)
 export const ADMIN_EMAIL = "scs.info.official@gmail.com";

@@ -623,7 +623,6 @@ const App: React.FC = () => {
             <div className="space-y-2">
               <input type="password" value={adminPassInput} onChange={e => { setAdminPassInput(e.target.value); setLoginError(false); }} onKeyPress={e => e.key === 'Enter' && handleAdminLogin()} autoFocus placeholder="كلمة المرور" className={`w-full p-4 rounded-2xl bg-amber-50 border-2 font-black text-center text-xl outline-none transition-all ${loginError ? 'border-red-500 animate-shake' : 'border-transparent focus:border-orange-500'}`} />
               {loginError && <p className="text-xs text-red-500 font-bold">كلمة المرور غير صحيحة!</p>}
-              <p className="text-[10px] text-gray-400 mt-2">كلمة المرور الافتراضية هي 123</p>
             </div>
             <div className="flex flex-col gap-2">
               <button onClick={handleAdminLogin} className="bg-amber-950 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-transform">دخول</button>
