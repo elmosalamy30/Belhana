@@ -25,7 +25,7 @@ export const MENU_ITEMS: Drink[] = [
   // --- المشروبات الغازية والمياه (cold) ---
   { id: 'c1', name: 'بيبسي', price: 20, category: 'cold', image: 'https://archive.org/download/f132784205396458038087-1/78e406f6-0e8e-4fdf-a670-043536bf0412-600x600_result_thumb.jpg' },
   { id: 'c2', name: 'بيبسي دايت', price: 20, category: 'cold', image: 'https://archive.org/download/f132784205396458038087-1/f132784205396458038087-1_thumb.jpg' },
-  { id: 'c5', name: 'مياه معدنية صغيرة', price: 7, category: 'cold', image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?q=80&w=400' },
+  { id: 'c5', name: 'مياه معدنية صغيرة', price: 7, category: 'cold', image: 'https://archive.org/download/5269-ex-0/__ia_thumb.jpg' },
   { id: 'c6', name: 'مياه معدنية كبيرة', price: 12, category: 'cold', image: 'https://archive.org/download/baraka_202601/__ia_thumb.jpg' },
 
   // --- العصائر (juice) ---
