@@ -70,6 +70,8 @@ const App: React.FC = () => {
   const [activeAdIndex, setActiveAdIndex] = useState(0);
   
   const adCarouselTimerRef = useRef<number | null>(null);
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
 
   const filteredMenuItems = useMemo(() => {
     if (activeCategory === 'all') return MENU_ITEMS;
@@ -127,7 +129,7 @@ const App: React.FC = () => {
     try {
       await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify(data.slice(-500)), // حفظ سجل أكبر للجرد
+        body: JSON.stringify(data.slice(-500)), 
         headers: { 'Content-Type': 'application/json' }
       });
       return true;
@@ -145,6 +147,25 @@ const App: React.FC = () => {
     adCarouselTimerRef.current = window.setInterval(() => {
       setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
     }, 5000);
+  };
+
+  const nextAd = () => {
+    setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
+    resetAdTimer();
+  };
+
+  const prevAd = () => {
+    setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
+    resetAdTimer();
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.targetTouches[0].clientX; };
+  const handleTouchMove = (e: React.TouchEvent) => { touchEndX.current = e.targetTouches[0].clientX; };
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (Math.abs(distance) > 50) distance > 0 ? nextAd() : prevAd();
+    touchStartX.current = 0; touchEndX.current = 0;
   };
 
   useEffect(() => {
@@ -217,15 +238,33 @@ const App: React.FC = () => {
                         `- الاسم/المكان: ${contactInfo}\n` +
                         (orderNote ? `- ملاحظات: ${orderNote}` : '');
 
-        // إرسال واتساب
+        // 1. إرسال إلى Gmail عبر خدمة FormSubmit (مجانية وسريعة)
+        const formPayload = {
+          _subject: `طلب جديد - بالهنا - #${orderId}`,
+          _template: 'table',
+          _captcha: 'false',
+          order_id: orderId,
+          customer_name: contactInfo,
+          location: `الدور ${floorNumber} - غرفة ${clinicNumber}`,
+          items: itemsText,
+          total_price: `${cartTotalPrice} EGP`,
+          notes: orderNote || 'لا يوجد',
+          admin_message: 'يرجى مراجعة الطلب وتوجيه مسؤل التوصيل.'
+        };
+
+        try {
+          await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(formPayload)
+          });
+        } catch (mailError) {
+          console.error("Mail service error:", mailError);
+        }
+
+        // 2. إرسال واتساب (للتنبيه الفوري)
         const whatsappUrl = `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(summary)}`;
         window.open(whatsappUrl, '_blank');
-
-        // إرسال بريد
-        const subject = `طلب جديد - بالهنا - #${orderId}`;
-        const mailtoLink = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(summary.replace(/\*/g, ''))}`;
-        
-        setTimeout(() => { window.location.href = mailtoLink; }, 1000);
         
         setCart({});
         setIsPlacingOrder(false);
@@ -255,7 +294,6 @@ const App: React.FC = () => {
         o.totalPrice,
         o.status === 'completed' ? 'مكتمل' : o.status === 'pending' ? 'قيد التنفيذ' : 'ملغي'
     ]);
-
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
@@ -269,10 +307,7 @@ const App: React.FC = () => {
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (adminPassInput === ADMIN_PASSWORD) {
-      setView('admin');
-      setShowAdminLogin(false);
-      setAdminPassInput("");
-      setLoginError(false);
+      setView('admin'); setShowAdminLogin(false); setAdminPassInput(""); setLoginError(false);
     } else { setLoginError(true); }
   };
 
@@ -376,14 +411,28 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
         {view === 'menu' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white h-28 bg-white group">
-              <div className="absolute inset-0 flex items-center px-6">
+            <div 
+              className="relative overflow-hidden rounded-2xl shadow-lg border border-white h-28 bg-white group cursor-pointer"
+              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+            >
+              <div className="absolute inset-0 flex items-center px-6 transition-all duration-500 ease-in-out">
                 <img src={DOCTOR_ADS[activeAdIndex].image} className="w-16 h-16 rounded-full object-cover border-2 border-amber-100" />
                 <div className="p-4 flex-1">
+                  <div className="text-[8px] text-amber-600 font-bold mb-0.5">إعلان عيادة</div>
                   <h3 className="font-bold text-sm leading-tight">{DOCTOR_ADS[activeAdIndex].name}</h3>
                   <p className="text-[10px] text-gray-500">{DOCTOR_ADS[activeAdIndex].specialty}</p>
                 </div>
-                <button onClick={() => window.open(`https://wa.me/${ADS_WHATSAPP}`)} className="p-2 rounded-full bg-emerald-50 text-emerald-600"><Icons.WhatsApp /></button>
+                <div className="flex flex-col items-center gap-1">
+                  <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${ADS_WHATSAPP}`); }} className="p-2 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all"><Icons.WhatsApp /></button>
+                  <span className="text-[8px] font-bold text-emerald-700">احجز الآن</span>
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); prevAd(); }} className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/60 text-[#2D1B14] shadow-md opacity-0 group-hover:opacity-100 hidden md:block"><Icons.ChevronLeft /></button>
+              <button onClick={(e) => { e.stopPropagation(); nextAd(); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/60 text-[#2D1B14] shadow-md opacity-0 group-hover:opacity-100 hidden md:block"><Icons.ChevronRight /></button>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                {DOCTOR_ADS.map((_, i) => (
+                  <div key={i} className={`w-1 h-1 rounded-full transition-all ${i === activeAdIndex ? 'bg-amber-600 w-3' : 'bg-gray-200'}`} />
+                ))}
               </div>
             </div>
 
@@ -446,10 +495,16 @@ const App: React.FC = () => {
                   <textarea placeholder="ملاحظات الطلب..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-3 rounded-xl border border-gray-100 text-xs font-bold h-16" />
                   
                   <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-4 rounded-xl text-white font-black text-lg shadow-xl flex flex-col items-center gap-1 ${COLORS.primary}`}>
-                    <span>تأكيد الطلب وإرسال التنبيهات</span>
-                    <div className="flex gap-2 opacity-70"><Icons.WhatsApp /><Icons.Mail /></div>
+                    {isPlacingOrder ? (
+                        <span>جاري إرسال التنبيهات...</span>
+                    ) : (
+                        <>
+                            <span>تأكيد الطلب وإرسال التنبيهات</span>
+                            <div className="flex gap-2 opacity-70"><Icons.WhatsApp /><Icons.Mail /></div>
+                        </>
+                    )}
                   </button>
-                  <p className="text-[10px] text-center text-gray-400 font-bold">سيتم إرسال نسخة عبر واتساب وبريد الإدارة تلقائياً</p>
+                  <p className="text-[10px] text-center text-gray-400 font-bold">سيتم إرسال الطلب تلقائياً إلى الإدارة والواتساب والبريد</p>
                 </div>
               </div>
             )}
@@ -470,8 +525,8 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.Check /></div>
-            <h2 className="text-xl font-black mb-2">تم تسجيل طلبك!</h2>
-            <p className="text-gray-500 text-xs font-bold mb-6">تم إرسال التنبيهات اللازمة وجاري التحضير.</p>
+            <h2 className="text-xl font-black mb-2">تم تسجيل طلبك بنجاح!</h2>
+            <p className="text-gray-500 text-xs font-bold mb-6">وصلت تنبيهاتك للإدارة وعامل التوصيل. جاري التحضير...</p>
             <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-3 rounded-xl ${COLORS.primary} text-white font-bold`}>العودة للرئيسية</button>
           </div>
         </div>
