@@ -29,6 +29,7 @@ const Icons = {
   Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
   ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+  Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
   Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   Minus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   Mail: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
@@ -75,12 +76,16 @@ const App: React.FC = () => {
     return MENU_ITEMS.filter(item => item.category === activeCategory);
   }, [activeCategory]);
 
-  const stats = useMemo(() => ({
-    pending: orders.filter(o => o.status === 'pending').length,
-    completed: orders.filter(o => o.status === 'completed').length,
-    cancelled: orders.filter(o => o.status === 'cancelled').length,
-    total: orders.length
-  }), [orders]);
+  const stats = useMemo(() => {
+    const totalRevenue = orders.reduce((sum, o) => o.status === 'completed' ? sum + o.totalPrice : sum, 0);
+    return {
+      pending: orders.filter(o => o.status === 'pending').length,
+      completed: orders.filter(o => o.status === 'completed').length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+      total: orders.length,
+      revenue: totalRevenue
+    };
+  }, [orders]);
 
   const getRoomsForFloor = (floor: string) => {
     if (floor === "0") return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
@@ -122,7 +127,7 @@ const App: React.FC = () => {
     try {
       await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify(data.slice(-100)),
+        body: JSON.stringify(data.slice(-500)), // حفظ سجل أكبر للجرد
         headers: { 'Content-Type': 'application/json' }
       });
       return true;
@@ -140,16 +145,6 @@ const App: React.FC = () => {
     adCarouselTimerRef.current = window.setInterval(() => {
       setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
     }, 5000);
-  };
-
-  const nextAd = () => {
-    setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
-    resetAdTimer();
-  };
-
-  const prevAd = () => {
-    setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
-    resetAdTimer();
   };
 
   useEffect(() => {
@@ -178,15 +173,12 @@ const App: React.FC = () => {
 
   const handleConfirmOrder = async () => {
     if (!floorNumber || !clinicNumber || !contactInfo.trim()) { 
-      alert("يرجى إكمال جميع بيانات التوصيل (الدور، الرقم، والاسم) قبل التأكيد.");
+      alert("يرجى إكمال جميع بيانات التوصيل قبل التأكيد.");
       return; 
     }
 
     const currentCartItems = Object.values(cart) as CartItem[];
-    if (currentCartItems.length === 0) {
-      alert("السلة فارغة!");
-      return;
-    }
+    if (currentCartItems.length === 0) return;
 
     setIsPlacingOrder(true);
 
@@ -215,41 +207,32 @@ const App: React.FC = () => {
       const success = await saveOrders([...currentOrders, newOrder]);
 
       if (success) {
-        // تحضير رسالة الواتساب والبريد
         const itemsText = currentCartItems.map(i => `• ${i.drink.name} (عدد ${i.quantity})`).join('\n');
-        const summary = `طلب جديد من تطبيق بالهنا (#${orderId})\n\n` +
-                        `التفاصيل:\n${itemsText}\n\n` +
-                        `الإجمالي: ${cartTotalPrice} ج.م\n\n` +
-                        `الموقع:\n` +
+        const summary = `*طلب جديد من تطبيق بالهنا (#${orderId})*\n\n` +
+                        `*التفاصيل:*\n${itemsText}\n\n` +
+                        `*الإجمالي:* ${cartTotalPrice} ج.م\n\n` +
+                        `*الموقع:*\n` +
                         `- الدور: ${floorNumber}\n` +
                         `- الرقم: ${clinicNumber}\n` +
                         `- الاسم/المكان: ${contactInfo}\n` +
                         (orderNote ? `- ملاحظات: ${orderNote}` : '');
 
-        // 1. فتح الواتساب
+        // إرسال واتساب
         const whatsappUrl = `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(summary)}`;
         window.open(whatsappUrl, '_blank');
 
-        // 2. إرسال بريد إلكتروني
+        // إرسال بريد
         const subject = `طلب جديد - بالهنا - #${orderId}`;
-        const mailtoLink = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(summary)}`;
+        const mailtoLink = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(summary.replace(/\*/g, ''))}`;
         
-        // استخدام setTimeout لتجنب حظر المتصفح لعمليتي فتح متتاليتين
-        setTimeout(() => {
-            window.location.href = mailtoLink;
-        }, 1000);
+        setTimeout(() => { window.location.href = mailtoLink; }, 1000);
         
-        // مسح السلة وإظهار رسالة النجاح
         setCart({});
         setIsPlacingOrder(false);
         setShowSuccessModal(true);
-      } else {
-        throw new Error("Failed to save order");
       }
-
-    } catch (error) {
-      console.error("Order error:", error);
-      alert("حدث خطأ أثناء حفظ الطلب، يرجى المحاولة مرة أخرى.");
+    } catch (e) {
+      alert("حدث خطأ، حاول مرة أخرى.");
       setIsPlacingOrder(false);
     }
   };
@@ -260,11 +243,27 @@ const App: React.FC = () => {
     await saveOrders(updated);
   };
 
-  const clearCompletedOrders = async () => {
-    if (!confirm("هل أنت متأكد من مسح جميع الطلبات المكتملة والملغاة؟")) return;
-    const pendingOnly = orders.filter(o => o.status === 'pending');
-    setOrders(pendingOnly);
-    await saveOrders(pendingOnly);
+  const exportInventory = () => {
+    const headers = ["رقم الطلب", "التاريخ", "الاسم/المكان", "الدور", "الغرفة", "التفاصيل", "الإجمالي", "الحالة"];
+    const rows = orders.map(o => [
+        o.id,
+        new Date(o.timestamp).toLocaleString('ar-EG'),
+        o.contactInfo,
+        o.floorNumber,
+        o.clinicNumber,
+        o.items.map(i => `${i.drinkName} x${i.quantity}`).join(' | '),
+        o.totalPrice,
+        o.status === 'completed' ? 'مكتمل' : o.status === 'pending' ? 'قيد التنفيذ' : 'ملغي'
+    ]);
+
+    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `جرد_بالهنا_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -274,9 +273,7 @@ const App: React.FC = () => {
       setShowAdminLogin(false);
       setAdminPassInput("");
       setLoginError(false);
-    } else {
-      setLoginError(true);
-    }
+    } else { setLoginError(true); }
   };
 
   if (view === 'admin') {
@@ -289,98 +286,65 @@ const App: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setView('menu')}
-                className={`p-2 rounded-full ${COLORS.surface} shadow-sm border ${COLORS.border} ${COLORS.accent}`}
-              >
-                <Icons.ArrowRight />
-              </button>
+              <button onClick={() => setView('menu')} className={`p-2 rounded-full ${COLORS.surface} shadow-sm border ${COLORS.border} ${COLORS.accent}`}><Icons.ArrowRight /></button>
               <div>
-                <h1 className={`text-2xl font-bold ${COLORS.textMain}`}>لوحة التحكم - بالهنا</h1>
+                <h1 className={`text-2xl font-bold ${COLORS.textMain}`}>نظام إدارة بالهنا</h1>
                 <p className={COLORS.textMuted}>آخر مزامنة: {lastSyncTime}</p>
               </div>
             </div>
-            
-            <div className="flex flex-wrap gap-2">
-              <button 
-                onClick={clearCompletedOrders}
-                className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold border border-red-100 flex items-center gap-2"
-              >
-                <Icons.Trash /> مسح السجل
-              </button>
+            <div className="flex gap-2">
+              <button onClick={exportInventory} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg"><Icons.Download /> تحميل سجل الجرد</button>
+              <button onClick={() => { if(confirm("مسح السجل المكتمل؟")) saveOrders(orders.filter(o => o.status === 'pending')); }} className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-2"><Icons.Trash /> مسح السجل</button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className={`p-4 rounded-2xl shadow-sm border border-transparent ${COLORS.surface}`}>
+              <div className="text-xs font-bold text-gray-400 mb-1">إجمالي المبيعات</div>
+              <div className="text-2xl font-black text-amber-700">{stats.revenue} <span className="text-xs">ج.م</span></div>
+            </div>
             {[
               { label: 'قيد التنفيذ', count: stats.pending, key: 'pending', color: 'text-amber-600', bg: 'bg-amber-50' },
               { label: 'مكتمل', count: stats.completed, key: 'completed', color: 'text-emerald-600', bg: 'bg-emerald-50' },
               { label: 'ملغي', count: stats.cancelled, key: 'cancelled', color: 'text-gray-500', bg: 'bg-gray-50' },
               { label: 'الكل', count: stats.total, key: 'all', color: COLORS.accent, bg: COLORS.accentBg }
             ].map(s => (
-              <button 
-                key={s.key}
-                onClick={() => setAdminFilter(s.key as any)}
-                className={`p-4 rounded-xl border transition-all ${s.bg} ${adminFilter === s.key ? 'ring-2 ring-offset-2 ring-amber-400 border-transparent shadow-md' : 'border-transparent shadow-sm opacity-80'}`}
-              >
-                <div className={`text-sm font-semibold mb-1 ${s.color}`}>{s.label}</div>
-                <div className="text-2xl font-bold">{s.count}</div>
+              <button key={s.key} onClick={() => setAdminFilter(s.key as any)} className={`p-4 rounded-2xl border transition-all text-right ${s.bg} ${adminFilter === s.key ? 'ring-2 ring-amber-400' : 'opacity-80'}`}>
+                <div className={`text-xs font-bold mb-1 ${s.color}`}>{s.label}</div>
+                <div className="text-xl font-black">{s.count}</div>
               </button>
             ))}
           </div>
 
           <div className="space-y-4">
             {filteredOrders.length === 0 ? (
-              <div className={`p-12 text-center rounded-2xl ${COLORS.surface} border-2 border-dashed ${COLORS.border}`}>
-                <div className="text-4xl mb-4">📜</div>
-                <p className={COLORS.textMuted}>لا توجد طلبات في هذا القسم حالياً</p>
-              </div>
+              <div className={`p-12 text-center rounded-2xl ${COLORS.surface} border-2 border-dashed ${COLORS.border}`}><p className={COLORS.textMuted}>لا توجد بيانات حالياً</p></div>
             ) : (
               filteredOrders.map(order => (
-                <div key={order.id} className={`${COLORS.surface} rounded-2xl p-6 shadow-sm border ${COLORS.border} transition-all`}>
+                <div key={order.id} className={`${COLORS.surface} rounded-2xl p-6 shadow-sm border ${COLORS.border}`}>
                   <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${COLORS.primary} text-white`}>#{order.id}</span>
-                        <span className={`text-sm ${COLORS.textMuted}`}>{new Date(order.timestamp).toLocaleTimeString('ar-EG')}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${COLORS.primary} text-white`}>#{order.id}</span>
+                        <span className={`text-[11px] ${COLORS.textMuted}`}>{new Date(order.timestamp).toLocaleString('ar-EG')}</span>
                       </div>
-                      <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
-                        <Icons.User /> {order.contactInfo}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-1 rounded-full w-fit">
-                        <Icons.MapPin />
-                        الدور {order.floorNumber} - غرفة/عيادة {order.clinicNumber}
-                      </div>
+                      <h3 className="text-lg font-bold flex items-center gap-2"><Icons.User /> {order.contactInfo}</h3>
+                      <div className="text-sm text-amber-700 bg-amber-50 px-3 py-1 rounded-full w-fit mt-1">الدور {order.floorNumber} - غرفة {order.clinicNumber}</div>
                     </div>
-                    
                     <div className="text-left">
-                      <div className={`text-2xl font-bold ${COLORS.accent}`}>{order.totalPrice} <span className="text-sm font-normal">ج.م</span></div>
+                      <div className="text-xl font-black text-amber-600">{order.totalPrice} ج.م</div>
                       {order.status === 'pending' && (
-                        <div className="flex gap-2 mt-3">
-                          <button 
-                            onClick={() => updateOrderStatus(order.id, 'completed')}
-                            className="bg-emerald-500 text-white p-2 rounded-lg shadow-sm hover:bg-emerald-600 transition-colors"
-                          >
-                            <Icons.Check />
-                          </button>
-                        </div>
+                        <button onClick={() => updateOrderStatus(order.id, 'completed')} className="mt-2 bg-emerald-500 text-white p-2 rounded-lg shadow-sm hover:bg-emerald-600 transition-colors"><Icons.Check /></button>
                       )}
                     </div>
                   </div>
                   <div className={`border-t ${COLORS.border} pt-4`}>
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                       {order.items.map((item, idx) => (
-                        <li key={idx} className="flex justify-between items-center text-sm">
-                          <span className="font-semibold">{item.drinkName} <span className="text-amber-600">×{item.quantity}</span></span>
-                          <span className={COLORS.textMuted}>{item.price * item.quantity} ج.م</span>
-                        </li>
+                        <li key={idx} className="flex justify-between text-sm"><span className="font-bold">{item.drinkName} <span className="text-amber-600">×{item.quantity}</span></span></li>
                       ))}
                     </ul>
-                    {order.notes && (
-                      <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-100 italic">
-                        " {order.notes} "
-                      </div>
-                    )}
+                    {order.notes && <div className="mt-3 p-3 bg-blue-50 text-blue-800 text-xs rounded-lg italic">"{order.notes}"</div>}
                   </div>
                 </div>
               ))
@@ -396,17 +360,14 @@ const App: React.FC = () => {
       <header className={`sticky top-0 z-50 ${COLORS.primary} text-white shadow-xl`}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={LOGO_URL} alt="Logo" className="w-12 h-12 rounded-full border-2 border-amber-500 shadow-lg object-cover" />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">بالهنا</h1>
-              <p className="text-[10px] text-amber-400 font-semibold uppercase tracking-widest">Hana Medical Center</p>
-            </div>
+            <img src={LOGO_URL} alt="Logo" className="w-10 h-10 rounded-full border-2 border-amber-500 object-cover" />
+            <div><h1 className="text-lg font-bold">بالهنا</h1><p className="text-[9px] text-amber-400 font-bold uppercase tracking-widest">Hana Medical Center</p></div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowAdminLogin(true)} className="p-2.5 rounded-full hover:bg-white/10 transition-colors"><Icons.User /></button>
-            <button onClick={() => setView('cart')} className={`relative ${COLORS.secondary} p-2.5 rounded-full shadow-lg transition-transform active:scale-90`}>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAdminLogin(true)} className="p-2 rounded-full hover:bg-white/10"><Icons.User /></button>
+            <button onClick={() => setView('cart')} className={`relative ${COLORS.secondary} p-2 rounded-full shadow-lg`}>
               <Icons.ShoppingCart />
-              {cartTotalItems > 0 && <span className="absolute -top-1 -right-1 bg-white text-amber-700 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-bounce">{cartTotalItems}</span>}
+              {cartTotalItems > 0 && <span className="absolute -top-1 -right-1 bg-white text-amber-700 text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-md">{cartTotalItems}</span>}
             </button>
           </div>
         </div>
@@ -414,55 +375,38 @@ const App: React.FC = () => {
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
         {view === 'menu' && (
-          <div className="space-y-8 animate-fadeIn">
-            <div className="relative overflow-hidden rounded-2xl shadow-xl border border-white/50 h-32 md:h-40 bg-white group/carousel">
-              <div className="absolute inset-0 transition-opacity duration-1000 flex items-center px-10">
-                <img src={DOCTOR_ADS[activeAdIndex].image} alt={DOCTOR_ADS[activeAdIndex].name} className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-amber-100" />
+          <div className="space-y-6 animate-fadeIn">
+            <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white h-28 bg-white group">
+              <div className="absolute inset-0 flex items-center px-6">
+                <img src={DOCTOR_ADS[activeAdIndex].image} className="w-16 h-16 rounded-full object-cover border-2 border-amber-100" />
                 <div className="p-4 flex-1">
-                  <div className="text-[10px] text-amber-600 font-bold mb-1">إعلان عيادة</div>
-                  <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-1">{DOCTOR_ADS[activeAdIndex].name}</h3>
-                  <p className="text-[10px] md:text-xs text-gray-500 mb-1 line-clamp-1">{DOCTOR_ADS[activeAdIndex].specialty}</p>
-                  <p className="text-[9px] md:text-[10px] text-gray-400 flex items-center gap-1"><Icons.MapPin /> {DOCTOR_ADS[activeAdIndex].location}</p>
+                  <h3 className="font-bold text-sm leading-tight">{DOCTOR_ADS[activeAdIndex].name}</h3>
+                  <p className="text-[10px] text-gray-500">{DOCTOR_ADS[activeAdIndex].specialty}</p>
                 </div>
-                <div className="px-4 border-r flex flex-col justify-center items-center">
-                   <button onClick={() => window.open(`https://wa.me/${ADS_WHATSAPP}`)} className="p-2 md:p-3 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"><Icons.WhatsApp /></button>
-                   <span className="text-[9px] mt-1 text-emerald-700 font-bold">احجز</span>
-                </div>
-              </div>
-              <button onClick={prevAd} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/60 text-[#2D1B14] shadow-md opacity-0 group-hover/carousel:opacity-100 z-10"><Icons.ChevronLeft /></button>
-              <button onClick={nextAd} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/60 text-[#2D1B14] shadow-md opacity-0 group-hover/carousel:opacity-100 z-10"><Icons.ChevronRight /></button>
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-                {DOCTOR_ADS.map((_, i) => (
-                  <button key={i} onClick={() => { setActiveAdIndex(i); resetAdTimer(); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeAdIndex ? 'bg-amber-600 w-4' : 'bg-gray-200'}`} />
-                ))}
+                <button onClick={() => window.open(`https://wa.me/${ADS_WHATSAPP}`)} className="p-2 rounded-full bg-emerald-50 text-emerald-600"><Icons.WhatsApp /></button>
               </div>
             </div>
 
-            <div className="flex overflow-x-auto gap-3 pb-4 no-scrollbar -mx-4 px-4 sticky top-16 z-40 bg-[#FDF8F3]/80 backdrop-blur-sm">
+            <div className="flex overflow-x-auto gap-2 pb-4 no-scrollbar -mx-4 px-4 sticky top-14 z-40 bg-[#FDF8F3]/90 backdrop-blur-md">
               {CATEGORIES.map(cat => (
-                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm ${activeCategory === cat.id ? `${COLORS.secondary} text-white scale-105` : `${COLORS.surface} border ${COLORS.border}`}`}>
-                  <span className="text-lg">{cat.icon}</span> {cat.label}
-                </button>
+                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${activeCategory === cat.id ? `${COLORS.secondary} text-white` : `${COLORS.surface} border ${COLORS.border}`}`}>{cat.label}</button>
               ))}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {filteredMenuItems.map(item => (
-                <div key={item.id} className={`${COLORS.surface} rounded-2xl overflow-hidden shadow-md border ${COLORS.border} group hover:shadow-xl transition-all`}>
-                  <div className="relative h-32 md:h-44 overflow-hidden">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                    <div className="absolute top-2 left-2 bg-white/95 px-2 py-1 rounded-lg text-xs font-bold shadow-md">{item.price} ج.م</div>
-                  </div>
-                  <div className="p-3 text-center">
-                    <h3 className="font-bold text-sm mb-3 line-clamp-1">{item.name}</h3>
+                <div key={item.id} className={`${COLORS.surface} rounded-xl overflow-hidden shadow-sm border ${COLORS.border} group`}>
+                  <div className="relative h-28 overflow-hidden"><img src={item.image} className="w-full h-full object-cover" /><div className="absolute top-1 left-1 bg-white/95 px-2 py-0.5 rounded text-[10px] font-bold">{item.price} ج.م</div></div>
+                  <div className="p-2 text-center">
+                    <h3 className="font-bold text-[11px] mb-2 truncate">{item.name}</h3>
                     {cart[item.id] ? (
-                      <div className="flex items-center justify-between bg-amber-50 p-1 rounded-xl">
-                        <button onClick={() => updateCart(item, -1)} className={`${COLORS.secondary} text-white w-8 h-8 rounded-lg flex items-center justify-center`}><Icons.Minus /></button>
-                        <span className="font-bold text-amber-800">{cart[item.id].quantity}</span>
-                        <button onClick={() => updateCart(item, 1)} className={`${COLORS.secondary} text-white w-8 h-8 rounded-lg flex items-center justify-center`}><Icons.Plus /></button>
+                      <div className="flex items-center justify-between bg-amber-50 p-1 rounded-lg">
+                        <button onClick={() => updateCart(item, -1)} className={`${COLORS.secondary} text-white w-6 h-6 rounded flex items-center justify-center`}><Icons.Minus /></button>
+                        <span className="font-bold text-xs">{cart[item.id].quantity}</span>
+                        <button onClick={() => updateCart(item, 1)} className={`${COLORS.secondary} text-white w-6 h-6 rounded flex items-center justify-center`}><Icons.Plus /></button>
                       </div>
                     ) : (
-                      <button onClick={() => updateCart(item, 1)} className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 ${COLORS.primary} text-white shadow-md active:scale-95`}><Icons.Plus /> أضف للسلة</button>
+                      <button onClick={() => updateCart(item, 1)} className={`w-full py-1.5 rounded-lg text-[10px] font-bold ${COLORS.primary} text-white`}>إضافة</button>
                     )}
                   </div>
                 </div>
@@ -472,86 +416,40 @@ const App: React.FC = () => {
         )}
 
         {view === 'cart' && (
-          <div className="animate-slideIn max-w-2xl mx-auto space-y-6">
-            <div className="flex items-center gap-4 mb-2">
-              <button onClick={() => setView('menu')} className={`p-2 rounded-full ${COLORS.surface} shadow-sm border ${COLORS.border} ${COLORS.accent}`}><Icons.ArrowRight /></button>
-              <h2 className="text-2xl font-bold">مراجعة الطلب</h2>
-            </div>
+          <div className="max-w-xl mx-auto space-y-6">
+            <div className="flex items-center gap-4"><button onClick={() => setView('menu')} className={`p-2 rounded-full ${COLORS.surface} border ${COLORS.border}`}><Icons.ArrowRight /></button><h2 className="text-xl font-bold">مراجعة الطلب</h2></div>
             {Object.values(cart).length === 0 ? (
-              <div className="p-12 text-center rounded-2xl bg-white border-2 border-dashed border-gray-200">
-                <div className="text-6xl mb-6">☕</div>
-                <h3 className="text-xl font-bold">السلة فارغة</h3>
-                <button onClick={() => setView('menu')} className={`mt-8 ${COLORS.primary} text-white px-8 py-3 rounded-2xl font-bold shadow-lg`}>ابدأ التسوق</button>
-              </div>
+              <div className="p-12 text-center rounded-2xl bg-white border-2 border-dashed"><h3 className="font-bold">السلة فارغة</h3></div>
             ) : (
-              <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                  <div className="p-6 space-y-4">
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     {(Object.values(cart) as CartItem[]).map(item => (
-                      <div key={item.drink.id} className="flex items-center justify-between gap-4 py-3 border-b last:border-0">
-                        <div className="flex items-center gap-4">
-                          <img src={item.drink.image} alt={item.drink.name} className="w-14 h-14 rounded-xl object-cover" />
-                          <div>
-                            <h4 className="font-bold">{item.drink.name}</h4>
-                            <p className="text-xs text-amber-600 font-bold">{item.drink.price} ج.م</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-xl">
-                          <button onClick={() => updateCart(item.drink, -1)} className="w-8 h-8 rounded-lg bg-white flex items-center justify-center"><Icons.Minus /></button>
-                          <span className="font-bold w-4 text-center">{item.quantity}</span>
-                          <button onClick={() => updateCart(item.drink, 1)} className="w-8 h-8 rounded-lg bg-white flex items-center justify-center"><Icons.Plus /></button>
-                        </div>
+                      <div key={item.drink.id} className="flex justify-between py-2 border-b last:border-0">
+                        <span className="font-bold text-sm">{item.drink.name} (x{item.quantity})</span>
+                        <span className="text-amber-600 font-bold text-sm">{item.drink.price * item.quantity} ج.م</span>
                       </div>
                     ))}
-                  </div>
-                  <div className="bg-amber-50 p-4 flex justify-between items-center px-6">
-                    <span className="font-bold">الإجمالي</span>
-                    <span className="text-2xl font-black text-amber-700">{cartTotalPrice} ج.م</span>
-                  </div>
+                    <div className="mt-4 pt-4 border-t flex justify-between font-black text-lg"><span>الإجمالي</span><span>{cartTotalPrice} ج.م</span></div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5">
-                  <h3 className="font-bold text-lg flex items-center gap-2"><Icons.MapPin /> بيانات التوصيل</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 block mb-1">الدور</label>
-                      <select value={floorNumber} onChange={(e) => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="w-full p-4 rounded-xl border border-gray-200 font-bold">
-                        <option value="">اختر الدور</option>
-                        <option value="0">الأرضي</option>
-                        <option value="1">الأول</option>
-                        <option value="2">الثاني</option>
-                        <option value="3">الثالث</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 block mb-1">الرقم</label>
-                      <select disabled={!floorNumber} value={clinicNumber} onChange={(e) => setClinicNumber(e.target.value)} className="w-full p-4 rounded-xl border border-gray-200 font-bold disabled:opacity-50">
-                        <option value="">اختر الرقم</option>
-                        {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <h3 className="font-bold text-sm flex items-center gap-2"><Icons.MapPin /> بيانات التوصيل</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select value={floorNumber} onChange={(e) => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="p-3 rounded-xl border border-gray-100 text-xs font-bold">
+                        <option value="">اختر الدور</option><option value="0">الأرضي</option><option value="1">الأول</option><option value="2">الثاني</option><option value="3">الثالث</option>
+                    </select>
+                    <select disabled={!floorNumber} value={clinicNumber} onChange={(e) => setClinicNumber(e.target.value)} className="p-3 rounded-xl border border-gray-100 text-xs font-bold">
+                        <option value="">اختر الرقم</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 block mb-1">الاسم / المكان</label>
-                    <input type="text" placeholder="مثال: عيادة الرمد أو اسمك الشخصي" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="w-full p-4 rounded-xl border border-gray-200 font-semibold" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 block mb-1">ملاحظات</label>
-                    <textarea placeholder="سكر زيادة، بارد، إلخ..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-4 rounded-xl border border-gray-200 font-semibold h-20" />
-                  </div>
-                  <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-5 rounded-2xl text-white font-black text-xl shadow-2xl transition-all active:scale-95 flex flex-col items-center justify-center gap-1 ${COLORS.primary} disabled:opacity-50`}>
-                    <div className="flex items-center gap-2">
-                       {isPlacingOrder ? 'جاري الإرسال...' : (
-                         <>
-                           <span>تأكيد وإرسال (واتساب + بريد)</span>
-                           <div className="flex gap-1">
-                             <Icons.WhatsApp />
-                             <Icons.Mail />
-                           </div>
-                         </>
-                       )}
-                    </div>
+                  <input type="text" placeholder="الاسم / المكان (مثال: عيادة الرمد)" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="w-full p-3 rounded-xl border border-gray-100 text-xs font-bold" />
+                  <textarea placeholder="ملاحظات الطلب..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-3 rounded-xl border border-gray-100 text-xs font-bold h-16" />
+                  
+                  <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-4 rounded-xl text-white font-black text-lg shadow-xl flex flex-col items-center gap-1 ${COLORS.primary}`}>
+                    <span>تأكيد الطلب وإرسال التنبيهات</span>
+                    <div className="flex gap-2 opacity-70"><Icons.WhatsApp /><Icons.Mail /></div>
                   </button>
+                  <p className="text-[10px] text-center text-gray-400 font-bold">سيتم إرسال نسخة عبر واتساب وبريد الإدارة تلقائياً</p>
                 </div>
               </div>
             )}
@@ -560,51 +458,40 @@ const App: React.FC = () => {
       </main>
 
       {view === 'menu' && cartTotalItems > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 z-50 animate-bounceIn">
-          <button onClick={() => setView('cart')} className={`max-w-xl mx-auto w-full ${COLORS.primary} text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between active:scale-95`}>
-            <div className="flex items-center gap-4"><div className="bg-amber-500 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black">{cartTotalItems}</div><div className="text-right"><div className="font-black">عرض السلة</div></div></div>
-            <div className="text-xl font-black">{cartTotalPrice} ج.م</div>
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <button onClick={() => setView('cart')} className={`max-w-xl mx-auto w-full ${COLORS.primary} text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between`}>
+            <div className="flex items-center gap-3"><div className="bg-amber-500 text-white px-3 py-1 rounded-lg font-black">{cartTotalItems}</div><span className="font-bold text-sm">عرض السلة</span></div>
+            <div className="font-black">{cartTotalPrice} ج.م</div>
           </button>
         </div>
       )}
 
       {showSuccessModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-[32px] p-8 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6"><Icons.Check /></div>
-            <h2 className="text-2xl font-black mb-2">تم تسجيل طلبك!</h2>
-            <p className="text-gray-500 mb-8 font-semibold">سيتم تحضير مشروبك وتوصيله فوراً.</p>
-            <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-4 rounded-2xl ${COLORS.primary} text-white font-bold`}>العودة للرئيسية</button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.Check /></div>
+            <h2 className="text-xl font-black mb-2">تم تسجيل طلبك!</h2>
+            <p className="text-gray-500 text-xs font-bold mb-6">تم إرسال التنبيهات اللازمة وجاري التحضير.</p>
+            <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-3 rounded-xl ${COLORS.primary} text-white font-bold`}>العودة للرئيسية</button>
           </div>
         </div>
       )}
 
       {showAdminLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold">دخول الإدارة</h2><button onClick={() => setShowAdminLogin(false)}><Icons.XCircle /></button></div>
-            <form onSubmit={handleAdminLogin} className="space-y-4">
-              <input autoFocus type="password" value={adminPassInput} onChange={(e) => setAdminPassInput(e.target.value)} className="w-full p-4 rounded-2xl border font-bold text-center tracking-widest" placeholder="••••••••" />
-              <button type="submit" className={`w-full py-4 rounded-2xl ${COLORS.primary} text-white font-bold`}>دخول</button>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <div className="flex justify-between items-center mb-4"><h2 className="font-bold">دخول الإدارة</h2><button onClick={() => setShowAdminLogin(false)}><Icons.XCircle /></button></div>
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <input autoFocus type="password" value={adminPassInput} onChange={(e) => setAdminPassInput(e.target.value)} className="w-full p-3 rounded-xl border font-bold text-center" placeholder="كلمة المرور" />
+              <button type="submit" className={`w-full py-3 rounded-xl ${COLORS.primary} text-white font-bold`}>دخول</button>
             </form>
           </div>
         </div>
       )}
 
-      <footer className="mt-auto py-12 px-4 text-center">
-        <p className="text-xs font-bold text-gray-400">جميع الحقوق محفوظة &copy; {new Date().getFullYear()}</p>
-        <p className="text-[10px] font-black tracking-widest text-amber-500/50 uppercase">Created by Dr Ahmed Elmosalamy</p>
+      <footer className="mt-auto py-8 text-center text-gray-400">
+        <p className="text-[10px] font-bold uppercase tracking-widest">Created by Dr Ahmed Elmosalamy</p>
       </footer>
-
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes bounceIn { 0% { transform: scale(0.9); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
-        .animate-slideIn { animation: slideIn 0.5s ease-out; }
-        .animate-bounceIn { animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-      `}</style>
     </div>
   );
 };
