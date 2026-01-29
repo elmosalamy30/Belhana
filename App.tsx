@@ -74,7 +74,6 @@ const App: React.FC = () => {
     return MENU_ITEMS.filter(item => item.category === activeCategory);
   }, [activeCategory]);
 
-  // Dynamic Room Logic based on Floor
   const availableRooms = useMemo(() => {
     if (floorNumber === "0") {
       return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
@@ -100,7 +99,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Sync logic
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -117,22 +115,8 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [view]);
 
-  // Carousel handlers
   const nextAd = () => setActiveAdIndex((prev) => (prev + 1) % DOCTOR_ADS.length);
-  const prevAd = () => setActiveAdIndex((prev) => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
-
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.targetTouches[0].clientX; };
-  const handleTouchMove = (e: React.TouchEvent) => { touchEndX.current = e.targetTouches[0].clientX; };
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const distance = touchStartX.current - touchEndX.current;
-    if (distance > 50) nextAd();
-    if (distance < -50) prevAd();
-    touchStartX.current = 0;
-    touchEndX.current = 0;
-  };
-
-  // Auto play ads
+  
   useEffect(() => {
     const timer = setInterval(nextAd, 6000);
     return () => clearInterval(timer);
@@ -159,34 +143,50 @@ const App: React.FC = () => {
 
   const handleConfirmOrder = async () => {
     if (!floorNumber || !clinicNumber || !contactInfo.trim()) { 
-      alert("يرجى إكمال جميع بيانات التوصيل (الدور، الغرفة، والاسم).");
+      alert("يرجى إكمال جميع بيانات التوصيل.");
       return; 
     }
     setIsPlacingOrder(true);
     try {
       const orderId = Math.random().toString(36).substr(2, 5).toUpperCase();
       const currentCartItems = Object.values(cart) as CartItem[];
+      const itemsList = currentCartItems.map((i: CartItem) => `${i.drink.name} (×${i.quantity})`).join(', ');
       
-      const emailSubject = `طلب جديد من تطبيق بالهنا (#${orderId})`;
-      const emailBody = `طلب جديد من تطبيق بالهنا\n` +
-                        `رقم الطلب: #${orderId}\n\n` +
-                        `* الموقع:\n` +
+      // 1. Send to FormSubmit (Email Archive) via AJAX
+      const formData = {
+        _subject: `جرد طلبات بالهنا - طلب #${orderId}`,
+        "رقم الطلب": orderId,
+        "الدور": floorNumber,
+        "العيادة": clinicNumber,
+        "الاسم": contactInfo,
+        "الطلبات": itemsList,
+        "الإجمالي": `${cartTotalPrice} ج.م`,
+        "الملاحظات": orderNote || "لا يوجد",
+        _template: "table",
+        _captcha: "false"
+      };
+
+      try {
+        await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+      } catch (e) { console.warn("Email archive error, continuing..."); }
+
+      // 2. Open WhatsApp for Live Delivery
+      const whatsappMsg = `*طلب جديد من بالهنا (#${orderId})*\n\n` +
+                        `*الموقع:*\n` +
                         `- الدور: ${floorNumber}\n` +
                         `- عيادة/غرفة: ${clinicNumber}\n` +
-                        `- صاحب الطلب/الاسم: ${contactInfo}\n\n` +
-                        `* الطلبات:\n` +
-                        `${currentCartItems.map((i: CartItem) => `• ${i.drink.name} (الكمية: ${i.quantity}) - السعر: ${i.drink.price * i.quantity} ج.م`).join('\n')}\n\n` +
-                        `* الإجمالي: ${cartTotalPrice} ج.م\n` +
-                        (orderNote ? `* ملاحظات وإضافات: ${orderNote}\n` : '') +
-                        `\nتم الإرسال من تطبيق بالهنا - مجمع هنا الطبي.`;
+                        `- الاسم: ${contactInfo}\n\n` +
+                        `*الطلبات:*\n${currentCartItems.map((i: CartItem) => `• ${i.drink.name} (×${i.quantity})`).join('\n')}\n\n` +
+                        `*الإجمالي:* ${cartTotalPrice} ج.م\n` +
+                        (orderNote ? `*ملاحظات:* ${orderNote}` : '');
 
-      // Gmail Compose URL
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${ADMIN_EMAIL}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(`https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
       
-      // Open Gmail
-      window.open(gmailUrl, '_blank');
-      
-      // Sync with KVDB
+      // 3. Sync with KVDB
       const newOrder: Order = {
         id: orderId,
         items: currentCartItems.map((i: CartItem) => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
@@ -210,7 +210,7 @@ const App: React.FC = () => {
       setIsPlacingOrder(false);
       setShowSuccessModal(true);
     } catch (e) {
-      alert("حدث خطأ أثناء المزامنة، ولكن سيتم فتح البريد الإلكتروني.");
+      alert("حدث خطأ، حاول مرة أخرى.");
       setIsPlacingOrder(false);
     }
   };
@@ -222,23 +222,23 @@ const App: React.FC = () => {
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-4">
                <button onClick={() => setView('menu')} className="p-2 rounded-full bg-white shadow-sm text-amber-600"><Icons.ArrowRight /></button>
-               <h1 className="text-2xl font-black text-[#2D1B14]">لوحة الطلبات</h1>
+               <h1 className="text-2xl font-black text-[#2D1B14]">لوحة الجرد والطلبات</h1>
             </div>
             <p className="text-xs font-bold text-amber-700">آخر مزامنة: {lastSyncTime}</p>
           </div>
           <div className="space-y-4">
-             {orders.length === 0 ? <div className="p-20 text-center bg-white rounded-3xl text-gray-400">لا يوجد طلبات حالياً</div> : 
+             {orders.length === 0 ? <div className="p-20 text-center bg-white rounded-3xl text-gray-400">لا يوجد بيانات حالياً</div> : 
              orders.slice().reverse().map(o => (
                <div key={o.id} className="bg-white p-6 rounded-3xl shadow-sm border border-amber-50">
                   <div className="flex justify-between mb-4">
                     <div>
-                      <span className="text-[10px] font-black uppercase text-amber-600">طلب #{o.id}</span>
+                      <span className="text-[10px] font-black uppercase text-amber-600">ID: #{o.id}</span>
                       <h3 className="font-black text-lg">{o.clinicName}</h3>
-                      <p className="text-xs text-gray-500">الدور {o.floorNumber} - {o.clinicNumber}</p>
+                      <p className="text-xs text-gray-500">الدور {o.floorNumber} - عيادة {o.clinicNumber}</p>
                     </div>
                     <div className="text-left">
                       <p className="font-black text-amber-600">{o.totalPrice} ج.م</p>
-                      <p className="text-[10px] text-gray-400">{new Date(o.timestamp).toLocaleTimeString('ar-EG')}</p>
+                      <p className="text-[10px] text-gray-400">{new Date(o.timestamp).toLocaleString('ar-EG')}</p>
                     </div>
                   </div>
                   <ul className="text-sm bg-gray-50 p-4 rounded-2xl">
@@ -285,41 +285,23 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-5 py-8">
         {view === 'menu' && (
           <div className="space-y-10 animate-fadeIn">
-            
             {/* Carousel / Ads */}
-            <div 
-              className="relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-white h-44 bg-white group"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
+            <div className="relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-white h-44 bg-white group">
               <div className="absolute inset-0 flex items-center transition-all duration-700 ease-in-out">
                 {DOCTOR_ADS.map((ad, idx) => (
-                  <div 
-                    key={ad.id}
-                    className={`absolute inset-0 flex items-center px-6 md:px-12 transition-all duration-500 ${idx === activeAdIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}
-                  >
+                  <div key={ad.id} className={`absolute inset-0 flex items-center px-6 md:px-12 transition-all duration-500 ${idx === activeAdIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}>
                     <div className="relative flex-shrink-0">
                       <img src={ad.image} className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-amber-100 shadow-xl" />
-                      <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg">AD</div>
                     </div>
                     <div className="pr-6 flex-1">
-                      <div className="text-[10px] text-amber-600 font-black mb-1 uppercase tracking-widest flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span> مجمع هنا الطبي
-                      </div>
+                      <div className="text-[10px] text-amber-600 font-black mb-1">مجمع هنا الطبي</div>
                       <h3 className="font-black text-lg md:text-2xl text-[#2D1B14] leading-tight mb-1">{ad.name}</h3>
                       <p className="text-[13px] text-gray-500 font-bold opacity-80 mb-2">{ad.specialty}</p>
-                      <div className="inline-flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100">
-                         <Icons.MapPin />
-                         <span className="text-[11px] font-black text-amber-800">{ad.location}</span>
+                      <div className="inline-flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100 text-[11px] font-black text-amber-800">
+                         <Icons.MapPin /> {ad.location}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {DOCTOR_ADS.map((_, i) => (
-                  <button key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === activeAdIndex ? 'bg-amber-600 w-6' : 'bg-gray-200 w-2'}`} />
                 ))}
               </div>
             </div>
@@ -327,12 +309,8 @@ const App: React.FC = () => {
             {/* Categories */}
             <div className="flex overflow-x-auto gap-3 pb-4 no-scrollbar -mx-5 px-5 sticky top-[76px] z-40 bg-[#FDF8F3]/90 backdrop-blur-xl py-2">
               {CATEGORIES.map(cat => (
-                <button 
-                  key={cat.id} 
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-black transition-all shadow-sm active:scale-95 ${activeCategory === cat.id ? `${COLORS.secondary} text-white shadow-amber-500/20` : `${COLORS.surface} border border-amber-100 text-amber-900`}`}
-                >
-                  <span className="text-lg">{cat.icon}</span> {cat.label}
+                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl text-[13px] font-black transition-all shadow-sm active:scale-95 ${activeCategory === cat.id ? `${COLORS.secondary} text-white shadow-amber-500/20` : `${COLORS.surface} border border-amber-100 text-amber-900`}`}>
+                  <span>{cat.icon}</span> {cat.label}
                 </button>
               ))}
             </div>
@@ -348,13 +326,13 @@ const App: React.FC = () => {
                   <div className="p-5 text-center">
                     <h3 className="font-black text-[14px] mb-4 truncate text-[#2D1B14]">{item.name}</h3>
                     {cart[item.id] ? (
-                      <div className="flex items-center justify-between bg-amber-50 p-2 rounded-2xl border border-amber-100 shadow-inner">
-                        <button onClick={() => updateCart(item, -1)} className={`${COLORS.secondary} text-white w-8 h-8 rounded-xl flex items-center justify-center active:scale-75 shadow-sm`}><Icons.Minus /></button>
+                      <div className="flex items-center justify-between bg-amber-50 p-2 rounded-2xl border border-amber-100">
+                        <button onClick={() => updateCart(item, -1)} className={`${COLORS.secondary} text-white w-8 h-8 rounded-xl flex items-center justify-center`}><Icons.Minus /></button>
                         <span className="font-black text-sm text-amber-900">{cart[item.id].quantity}</span>
-                        <button onClick={() => updateCart(item, 1)} className={`${COLORS.secondary} text-white w-8 h-8 rounded-xl flex items-center justify-center active:scale-75 shadow-sm`}><Icons.Plus /></button>
+                        <button onClick={() => updateCart(item, 1)} className={`${COLORS.secondary} text-white w-8 h-8 rounded-xl flex items-center justify-center`}><Icons.Plus /></button>
                       </div>
                     ) : (
-                      <button onClick={() => updateCart(item, 1)} className={`w-full py-3 rounded-2xl text-[13px] font-black ${COLORS.primary} text-white active:scale-95 shadow-lg shadow-amber-900/10 hover:bg-[#3D261C] transition-colors`}>أضف الآن</button>
+                      <button onClick={() => updateCart(item, 1)} className={`w-full py-3 rounded-2xl text-[13px] font-black ${COLORS.primary} text-white active:scale-95 shadow-lg`}>أضف للسلة</button>
                     )}
                   </div>
                 </div>
@@ -367,14 +345,13 @@ const App: React.FC = () => {
           <div className="max-w-2xl mx-auto space-y-8 animate-fadeIn">
             <div className="flex items-center gap-5">
               <button onClick={() => setView('menu')} className={`p-3 rounded-full ${COLORS.surface} border border-amber-100 text-amber-700 shadow-md active:scale-90`}><Icons.ArrowRight /></button>
-              <h2 className="text-2xl font-black text-[#2D1B14] tracking-tight">مراجعة طلبك</h2>
+              <h2 className="text-2xl font-black text-[#2D1B14]">مراجعة الطلب</h2>
             </div>
 
-            {Object.values(cart).length === 0 ? (
+            {cartTotalItems === 0 ? (
               <div className="p-20 text-center rounded-[3rem] bg-white border-4 border-dashed border-amber-50 shadow-sm">
-                <div className="text-7xl mb-6 grayscale opacity-20">☕</div>
-                <h3 className="font-black text-gray-400 text-lg">سلتك فارغة حالياً</h3>
-                <button onClick={() => setView('menu')} className={`mt-8 py-4 px-12 rounded-2xl ${COLORS.primary} text-white font-black shadow-2xl active:scale-95`}>اطلب الآن</button>
+                <h3 className="font-black text-gray-400 text-lg">سلتك فارغة</h3>
+                <button onClick={() => setView('menu')} className={`mt-8 py-4 px-12 rounded-2xl ${COLORS.primary} text-white font-black`}>تصفح المنيو</button>
               </div>
             ) : (
               <div className="space-y-6">
@@ -384,16 +361,14 @@ const App: React.FC = () => {
                       <div key={item.drink.id} className="flex justify-between items-center py-4 border-b border-amber-50 last:border-0">
                         <div className="flex flex-col">
                            <span className="font-black text-base text-[#2D1B14]">{item.drink.name}</span>
-                           <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">الكمية: {item.quantity} × {item.drink.price} ج.م</span>
+                           <span className="text-[11px] text-gray-400 font-bold uppercase">× {item.quantity}</span>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <span className="text-amber-700 font-black text-lg">{item.drink.price * item.quantity} ج.م</span>
-                        </div>
+                        <span className="text-amber-700 font-black text-lg">{item.drink.price * item.quantity} ج.م</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-8 pt-8 border-t-2 border-dashed border-amber-100 flex justify-between items-center font-black text-2xl text-[#2D1B14]">
-                    <span className="text-base text-gray-400 uppercase tracking-widest">المجموع الكلي</span>
+                    <span className="text-base text-gray-400">الإجمالي</span>
                     <span>{cartTotalPrice} <span className="text-xs">ج.م</span></span>
                   </div>
                 </div>
@@ -401,67 +376,32 @@ const App: React.FC = () => {
                 <div className="bg-white rounded-[2.5rem] shadow-xl border border-amber-50 p-8 space-y-6">
                   <div className="flex items-center gap-3">
                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center"><Icons.MapPin /></div>
-                     <h3 className="font-black text-lg text-[#2D1B14]">بيانات التوصيل</h3>
+                     <h3 className="font-black text-lg text-[#2D1B14]">بيانات التوصيل (للجرد)</h3>
                   </div>
                   
-                  {/* Step 1: Floor Selection */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-amber-800 mr-2">1. اختر رقم الدور</label>
-                    <select 
-                      value={floorNumber} 
-                      onChange={(e) => {
-                        setFloorNumber(e.target.value);
-                        setClinicNumber(""); // Reset clinic when floor changes
-                      }} 
-                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all appearance-none cursor-pointer"
-                    >
-                        <option value="">اختيار الدور...</option>
-                        <option value="0">الدور الأرضي (0)</option>
-                        <option value="1">الدور الأول (1)</option>
-                        <option value="2">الدور الثاني (2)</option>
-                        <option value="3">الدور الثالث (3)</option>
-                    </select>
-                  </div>
-
-                  {/* Step 2: Clinic/Room Selection */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-amber-800 mr-2">2. اختر رقم العيادة / الغرفة</label>
-                    <select 
-                      disabled={!floorNumber}
-                      value={clinicNumber} 
-                      onChange={(e) => setClinicNumber(e.target.value)} 
-                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed appearance-none cursor-pointer"
-                    >
-                        <option value="">{floorNumber ? "اختر الرقم من القائمة..." : "يرجى اختيار الدور أولاً"}</option>
-                        {availableRooms.map(room => (
-                          <option key={room} value={room}>{room}</option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {/* Step 3: Name and Details */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-amber-800 mr-2">3. الاسم والاضافات</label>
-                    <input 
-                      type="text" 
-                      placeholder="اسم العيادة أو صاحب الطلب" 
-                      value={contactInfo} 
-                      onChange={(e) => setContactInfo(e.target.value)} 
-                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all" 
-                    />
-                    <textarea 
-                      placeholder="ملاحظات إضافية (مثل: سكر خفيف، نوع الحليب...)" 
-                      value={orderNote} 
-                      onChange={(e) => setOrderNote(e.target.value)} 
-                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black h-24 outline-none focus:border-amber-500 transition-all resize-none" 
-                    />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <select value={floorNumber} onChange={(e) => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500">
+                            <option value="">اختر الدور...</option>
+                            <option value="0">الأرضي (0)</option>
+                            <option value="1">الأول (1)</option>
+                            <option value="2">الثاني (2)</option>
+                            <option value="3">الثالث (3)</option>
+                        </select>
+                        <select disabled={!floorNumber} value={clinicNumber} onChange={(e) => setClinicNumber(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 disabled:opacity-30">
+                            <option value="">رقم العيادة...</option>
+                            {availableRooms.map(room => <option key={room} value={room}>{room}</option>)}
+                        </select>
+                    </div>
+                    <input type="text" placeholder="اسم صاحب الطلب" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500" />
+                    <textarea placeholder="إضافات (سكر، نوع حليب، إلخ...)" value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black h-24 outline-none focus:border-amber-500 resize-none" />
                   </div>
                   
-                  <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-5 rounded-2xl text-white font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${COLORS.primary} disabled:opacity-50 hover:bg-[#3D261C]`}>
+                  <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-5 rounded-2xl text-white font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${COLORS.primary} disabled:opacity-50`}>
                     {isPlacingOrder ? (
                         <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                        <>إرسال الطلب عبر Gmail <Icons.Mail /></>
+                        <>تأكيد الطلب (واتس + ميل) <Icons.WhatsApp /></>
                     )}
                   </button>
                 </div>
@@ -474,10 +414,10 @@ const App: React.FC = () => {
       {/* Floating Action Button */}
       {view === 'menu' && cartTotalItems > 0 && (
         <div className="fixed bottom-6 left-6 right-6 z-50 animate-bounceIn">
-          <button onClick={() => setView('cart')} className={`max-w-2xl mx-auto w-full ${COLORS.primary} text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between transition-transform active:scale-95`}>
+          <button onClick={() => setView('cart')} className={`max-w-2xl mx-auto w-full ${COLORS.primary} text-white p-5 rounded-[2rem] shadow-2xl flex items-center justify-between`}>
             <div className="flex items-center gap-4">
-                <div className="bg-amber-500 text-white px-4 py-1.5 rounded-2xl font-black text-base shadow-inner">{cartTotalItems}</div>
-                <span className="font-black text-base uppercase tracking-wider">عرض السلة</span>
+                <div className="bg-amber-500 text-white px-4 py-1.5 rounded-2xl font-black text-base">{cartTotalItems}</div>
+                <span className="font-black text-base">مراجعة الطلب</span>
             </div>
             <div className="font-black text-xl">{cartTotalPrice} ج.م</div>
           </button>
@@ -488,10 +428,10 @@ const App: React.FC = () => {
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-[#2D1B14]/80 backdrop-blur-md animate-fadeIn">
           <div className="bg-white rounded-[3.5rem] p-12 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 scale-125"><Icons.Check /></div>
-            <h2 className="text-2xl font-black mb-3 text-[#2D1B14]">تم إرسال طلبك!</h2>
-            <p className="text-gray-500 text-[14px] font-bold mb-8 leading-relaxed">تم فتح نافذة Gmail لإتمام الإرسال. ستقوم الإدارة بتجهيز طلبك فور الاستلام.</p>
-            <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-5 rounded-[2rem] ${COLORS.primary} text-white font-black shadow-2xl transition-all active:scale-95`}>العودة للرئيسية</button>
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6"><Icons.Check /></div>
+            <h2 className="text-2xl font-black mb-3 text-[#2D1B14]">تم التنفيذ!</h2>
+            <p className="text-gray-500 text-[14px] font-bold mb-8">تم إرسال الطلب عبر واتساب وأرشفته في سجل الإدارة بنجاح.</p>
+            <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-5 rounded-[2rem] ${COLORS.primary} text-white font-black shadow-2xl`}>العودة للرئيسية</button>
           </div>
         </div>
       )}
@@ -513,17 +453,15 @@ const App: React.FC = () => {
             }} className="space-y-5">
               <input autoFocus type="password" value={adminPassInput} onChange={(e) => setAdminPassInput(e.target.value)} className="w-full p-5 rounded-[1.5rem] border-2 border-amber-50 bg-amber-50/20 font-black text-center tracking-[0.5em] focus:border-amber-500 outline-none" placeholder="********" />
               <button type="submit" className={`w-full py-5 rounded-[1.5rem] ${COLORS.primary} text-white font-black shadow-2xl`}>دخول</button>
-              <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full py-2 text-gray-400 font-bold text-xs uppercase tracking-widest">إغلاق</button>
+              <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full py-2 text-gray-400 font-bold text-xs uppercase">إغلاق</button>
             </form>
           </div>
         </div>
       )}
 
-      <footer className="mt-auto py-12 text-center">
-        <div className="flex flex-col items-center gap-2 opacity-30">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-900">بالهنا — مجمع هنا الطبي</p>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-amber-800">Designed & Developed by Dr. Ahmed Elmosalamy</p>
-        </div>
+      <footer className="mt-auto py-12 text-center opacity-30">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-900">بالهنا — مجمع هنا الطبي</p>
+          <p className="text-[9px] font-bold text-amber-800">Designed by Dr. Ahmed Elmosalamy</p>
       </footer>
 
       <style>{`
