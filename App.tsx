@@ -25,6 +25,7 @@ const COLORS = {
 const Icons = {
   Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
   User: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  Mail: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
   WhatsApp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
   Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
@@ -62,7 +63,6 @@ const App: React.FC = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassInput, setAdminPassInput] = useState("");
   const [lastSyncTime, setLastSyncTime] = useState("-");
-  const [adminFilter, setAdminFilter] = useState<'pending' | 'completed' | 'all' | 'cancelled'>('pending');
   const [activeAdIndex, setActiveAdIndex] = useState(0);
   
   // Swipe states
@@ -73,6 +73,20 @@ const App: React.FC = () => {
     if (activeCategory === 'all') return MENU_ITEMS;
     return MENU_ITEMS.filter(item => item.category === activeCategory);
   }, [activeCategory]);
+
+  // Dynamic Room Logic based on Floor
+  const availableRooms = useMemo(() => {
+    if (floorNumber === "0") {
+      return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
+    } else if (floorNumber === "1") {
+      return Array.from({ length: 25 }, (_, i) => `F${(i + 1).toString().padStart(2, '0')}`);
+    } else if (floorNumber === "2") {
+      return Array.from({ length: 25 }, (_, i) => `S${(i + 1).toString().padStart(2, '0')}`);
+    } else if (floorNumber === "3") {
+      return Array.from({ length: 25 }, (_, i) => (301 + i).toString());
+    }
+    return [];
+  }, [floorNumber]);
 
   const setView = (newView: ViewState) => {
     window.history.pushState({ view: newView }, '', '');
@@ -124,11 +138,9 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fix: Explicitly type reduce sum and item to resolve unknown property errors
   const cartTotalPrice = useMemo(() => 
     Object.values(cart).reduce((sum: number, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
-  // Fix: Explicitly type reduce sum and item to resolve unknown property errors
   const cartTotalItems = useMemo(() =>
     Object.values(cart).reduce((sum: number, item: CartItem) => sum + item.quantity, 0), [cart]);
 
@@ -147,30 +159,36 @@ const App: React.FC = () => {
 
   const handleConfirmOrder = async () => {
     if (!floorNumber || !clinicNumber || !contactInfo.trim()) { 
-      alert("يرجى إكمال جميع بيانات التوصيل.");
+      alert("يرجى إكمال جميع بيانات التوصيل (الدور، الغرفة، والاسم).");
       return; 
     }
     setIsPlacingOrder(true);
     try {
       const orderId = Math.random().toString(36).substr(2, 5).toUpperCase();
-      // Fix: Cast Object.values result to CartItem[] to resolve unknown item errors
       const currentCartItems = Object.values(cart) as CartItem[];
       
-      const whatsappMsg = `*طلب جديد من تطبيق بالهنا (#${orderId})*\n\n` +
-                        `*التفاصيل:*\n${currentCartItems.map((i: CartItem) => `• ${i.drink.name} (×${i.quantity})`).join('\n')}\n\n` +
-                        `*الإجمالي:* ${cartTotalPrice} ج.م\n\n` +
-                        `*الموقع:*\n` +
+      const emailSubject = `طلب جديد من تطبيق بالهنا (#${orderId})`;
+      const emailBody = `طلب جديد من تطبيق بالهنا\n` +
+                        `رقم الطلب: #${orderId}\n\n` +
+                        `* الموقع:\n` +
                         `- الدور: ${floorNumber}\n` +
                         `- عيادة/غرفة: ${clinicNumber}\n` +
-                        `- التفاصيل: ${contactInfo}\n` +
-                        (orderNote ? `- ملاحظات: ${orderNote}` : '');
+                        `- صاحب الطلب/الاسم: ${contactInfo}\n\n` +
+                        `* الطلبات:\n` +
+                        `${currentCartItems.map((i: CartItem) => `• ${i.drink.name} (الكمية: ${i.quantity}) - السعر: ${i.drink.price * i.quantity} ج.م`).join('\n')}\n\n` +
+                        `* الإجمالي: ${cartTotalPrice} ج.م\n` +
+                        (orderNote ? `* ملاحظات وإضافات: ${orderNote}\n` : '') +
+                        `\nتم الإرسال من تطبيق بالهنا - مجمع هنا الطبي.`;
 
-      window.open(`https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
+      // Gmail Compose URL
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${ADMIN_EMAIL}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      
+      // Open Gmail
+      window.open(gmailUrl, '_blank');
       
       // Sync with KVDB
       const newOrder: Order = {
         id: orderId,
-        // Fix: Explicitly type map iterator as CartItem
         items: currentCartItems.map((i: CartItem) => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
         totalPrice: cartTotalPrice,
         clinicName: contactInfo,
@@ -182,10 +200,9 @@ const App: React.FC = () => {
         notes: orderNote
       };
       
-      const existing = orders;
       await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify([...existing, newOrder].slice(-100)),
+        body: JSON.stringify([...orders, newOrder].slice(-100)),
         headers: { 'Content-Type': 'application/json' }
       });
 
@@ -193,7 +210,7 @@ const App: React.FC = () => {
       setIsPlacingOrder(false);
       setShowSuccessModal(true);
     } catch (e) {
-      alert("حدث خطأ، حاول مرة أخرى.");
+      alert("حدث خطأ أثناء المزامنة، ولكن سيتم فتح البريد الإلكتروني.");
       setIsPlacingOrder(false);
     }
   };
@@ -224,7 +241,7 @@ const App: React.FC = () => {
                       <p className="text-[10px] text-gray-400">{new Date(o.timestamp).toLocaleTimeString('ar-EG')}</p>
                     </div>
                   </div>
-                  <ul className="text-sm bg-gray-50 p-4 rounded-2xl mb-4">
+                  <ul className="text-sm bg-gray-50 p-4 rounded-2xl">
                     {o.items.map((item, idx) => (
                       <li key={idx} className="flex justify-between py-1">
                         <span>{item.drinkName}</span>
@@ -269,7 +286,7 @@ const App: React.FC = () => {
         {view === 'menu' && (
           <div className="space-y-10 animate-fadeIn">
             
-            {/* Carousel / Ads - MODERNISED */}
+            {/* Carousel / Ads */}
             <div 
               className="relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-white h-44 bg-white group"
               onTouchStart={handleTouchStart}
@@ -297,30 +314,12 @@ const App: React.FC = () => {
                          <span className="text-[11px] font-black text-amber-800">{ad.location}</span>
                       </div>
                     </div>
-                    <div className="hidden md:flex flex-col gap-2">
-                       <button onClick={() => window.open(`https://wa.me/${ADS_WHATSAPP}`)} className="p-4 rounded-2xl bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
-                         <Icons.WhatsApp />
-                       </button>
-                    </div>
                   </div>
                 ))}
               </div>
-
-              {/* Navigation Arrows (Visual only for swipe cues) */}
-              <div className="absolute inset-y-0 right-2 flex items-center md:hidden">
-                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-amber-900/30">
-                  <Icons.ChevronLeft />
-                </div>
-              </div>
-
-              {/* Pagination Dots */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                 {DOCTOR_ADS.map((_, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => setActiveAdIndex(i)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${i === activeAdIndex ? 'bg-amber-600 w-6' : 'bg-gray-200 w-2'}`}
-                  />
+                  <button key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === activeAdIndex ? 'bg-amber-600 w-6' : 'bg-gray-200 w-2'}`} />
                 ))}
               </div>
             </div>
@@ -381,7 +380,6 @@ const App: React.FC = () => {
               <div className="space-y-6">
                 <div className="bg-white rounded-[2.5rem] shadow-xl border border-amber-50 p-8">
                   <div className="space-y-5">
-                    {/* Fix: Cast Object.values result and explicitly type iterator to resolve unknown property access */}
                     {(Object.values(cart) as CartItem[]).map((item: CartItem) => (
                       <div key={item.drink.id} className="flex justify-between items-center py-4 border-b border-amber-50 last:border-0">
                         <div className="flex flex-col">
@@ -390,10 +388,6 @@ const App: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-6">
                           <span className="text-amber-700 font-black text-lg">{item.drink.price * item.quantity} ج.م</span>
-                          <div className="flex gap-2">
-                             <button onClick={() => updateCart(item.drink, -1)} className="w-7 h-7 bg-gray-50 rounded-lg flex items-center justify-center border border-amber-50 active:scale-90 text-gray-400"><Icons.Minus /></button>
-                             <button onClick={() => updateCart(item.drink, 1)} className="w-7 h-7 bg-gray-50 rounded-lg flex items-center justify-center border border-amber-50 active:scale-90 text-amber-600"><Icons.Plus /></button>
-                          </div>
                         </div>
                       </div>
                     ))}
@@ -409,24 +403,65 @@ const App: React.FC = () => {
                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center"><Icons.MapPin /></div>
                      <h3 className="font-black text-lg text-[#2D1B14]">بيانات التوصيل</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <select value={floorNumber} onChange={(e) => setFloorNumber(e.target.value)} className="p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all">
-                        <option value="">اختيار الدور</option>
-                        <option value="0">الدور الأرضي</option>
-                        <option value="1">الدور الأول</option>
-                        <option value="2">الدور الثاني</option>
-                        <option value="3">الدور الثالث</option>
+                  
+                  {/* Step 1: Floor Selection */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-amber-800 mr-2">1. اختر رقم الدور</label>
+                    <select 
+                      value={floorNumber} 
+                      onChange={(e) => {
+                        setFloorNumber(e.target.value);
+                        setClinicNumber(""); // Reset clinic when floor changes
+                      }} 
+                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="">اختيار الدور...</option>
+                        <option value="0">الدور الأرضي (0)</option>
+                        <option value="1">الدور الأول (1)</option>
+                        <option value="2">الدور الثاني (2)</option>
+                        <option value="3">الدور الثالث (3)</option>
                     </select>
-                    <input type="text" placeholder="رقم العيادة/الغرفة" value={clinicNumber} onChange={(e) => setClinicNumber(e.target.value)} className="p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all" />
                   </div>
-                  <input type="text" placeholder="اسم العيادة أو القسم (اختياري)" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all" />
-                  <textarea placeholder="ملاحظات إضافية (مثل: سكر خفيف، بدون لبن)..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black h-24 outline-none focus:border-amber-500 transition-all resize-none" />
+
+                  {/* Step 2: Clinic/Room Selection */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-amber-800 mr-2">2. اختر رقم العيادة / الغرفة</label>
+                    <select 
+                      disabled={!floorNumber}
+                      value={clinicNumber} 
+                      onChange={(e) => setClinicNumber(e.target.value)} 
+                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed appearance-none cursor-pointer"
+                    >
+                        <option value="">{floorNumber ? "اختر الرقم من القائمة..." : "يرجى اختيار الدور أولاً"}</option>
+                        {availableRooms.map(room => (
+                          <option key={room} value={room}>{room}</option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Step 3: Name and Details */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-amber-800 mr-2">3. الاسم والاضافات</label>
+                    <input 
+                      type="text" 
+                      placeholder="اسم العيادة أو صاحب الطلب" 
+                      value={contactInfo} 
+                      onChange={(e) => setContactInfo(e.target.value)} 
+                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 transition-all" 
+                    />
+                    <textarea 
+                      placeholder="ملاحظات إضافية (مثل: سكر خفيف، نوع الحليب...)" 
+                      value={orderNote} 
+                      onChange={(e) => setOrderNote(e.target.value)} 
+                      className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black h-24 outline-none focus:border-amber-500 transition-all resize-none" 
+                    />
+                  </div>
                   
                   <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-5 rounded-2xl text-white font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${COLORS.primary} disabled:opacity-50 hover:bg-[#3D261C]`}>
                     {isPlacingOrder ? (
                         <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                        <>تأكيد الطلب عبر واتساب <Icons.WhatsApp /></>
+                        <>إرسال الطلب عبر Gmail <Icons.Mail /></>
                     )}
                   </button>
                 </div>
@@ -442,7 +477,7 @@ const App: React.FC = () => {
           <button onClick={() => setView('cart')} className={`max-w-2xl mx-auto w-full ${COLORS.primary} text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between transition-transform active:scale-95`}>
             <div className="flex items-center gap-4">
                 <div className="bg-amber-500 text-white px-4 py-1.5 rounded-2xl font-black text-base shadow-inner">{cartTotalItems}</div>
-                <span className="font-black text-base uppercase tracking-wider">مراجعة الطلبات</span>
+                <span className="font-black text-base uppercase tracking-wider">عرض السلة</span>
             </div>
             <div className="font-black text-xl">{cartTotalPrice} ج.م</div>
           </button>
@@ -452,10 +487,10 @@ const App: React.FC = () => {
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-[#2D1B14]/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white rounded-[3.5rem] p-12 max-w-sm w-full text-center shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] border-4 border-amber-50">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 scale-125 shadow-xl"><Icons.Check /></div>
-            <h2 className="text-2xl font-black mb-3 text-[#2D1B14]">طلبك في الطريق!</h2>
-            <p className="text-gray-500 text-[14px] font-bold mb-8 leading-relaxed">تم إرسال الطلب بنجاح، جاري التحضير الآن وسيقوم المندوب بتسليمه في أقرب وقت.</p>
+          <div className="bg-white rounded-[3.5rem] p-12 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 scale-125"><Icons.Check /></div>
+            <h2 className="text-2xl font-black mb-3 text-[#2D1B14]">تم إرسال طلبك!</h2>
+            <p className="text-gray-500 text-[14px] font-bold mb-8 leading-relaxed">تم فتح نافذة Gmail لإتمام الإرسال. ستقوم الإدارة بتجهيز طلبك فور الاستلام.</p>
             <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-5 rounded-[2rem] ${COLORS.primary} text-white font-black shadow-2xl transition-all active:scale-95`}>العودة للرئيسية</button>
           </div>
         </div>
@@ -465,7 +500,7 @@ const App: React.FC = () => {
       {showAdminLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-black/70 backdrop-blur-xl">
           <div className="bg-white rounded-[3rem] p-8 max-w-sm w-full shadow-2xl">
-            <h2 className="font-black text-xl text-[#2D1B14] mb-8">نظام الإدارة</h2>
+            <h2 className="font-black text-xl text-[#2D1B14] mb-8">دخول الإدارة</h2>
             <form onSubmit={(e) => {
               e.preventDefault();
               if (adminPassInput === ADMIN_PASSWORD) {
@@ -476,16 +511,9 @@ const App: React.FC = () => {
                 alert("كلمة المرور غير صحيحة");
               }
             }} className="space-y-5">
-              <input 
-                autoFocus
-                type="password" 
-                value={adminPassInput} 
-                onChange={(e) => setAdminPassInput(e.target.value)} 
-                className="w-full p-5 rounded-[1.5rem] border-2 border-amber-50 bg-amber-50/20 font-black text-center tracking-[0.5em] focus:border-amber-500 outline-none" 
-                placeholder="********" 
-              />
+              <input autoFocus type="password" value={adminPassInput} onChange={(e) => setAdminPassInput(e.target.value)} className="w-full p-5 rounded-[1.5rem] border-2 border-amber-50 bg-amber-50/20 font-black text-center tracking-[0.5em] focus:border-amber-500 outline-none" placeholder="********" />
               <button type="submit" className={`w-full py-5 rounded-[1.5rem] ${COLORS.primary} text-white font-black shadow-2xl`}>دخول</button>
-              <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full py-2 text-gray-400 font-bold text-xs uppercase tracking-widest">إلغاء</button>
+              <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full py-2 text-gray-400 font-bold text-xs uppercase tracking-widest">إغلاق</button>
             </form>
           </div>
         </div>
@@ -493,7 +521,6 @@ const App: React.FC = () => {
 
       <footer className="mt-auto py-12 text-center">
         <div className="flex flex-col items-center gap-2 opacity-30">
-            <img src={LOGO_URL} className="w-6 h-6 grayscale" />
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-900">بالهنا — مجمع هنا الطبي</p>
             <p className="text-[9px] font-bold uppercase tracking-widest text-amber-800">Designed & Developed by Dr. Ahmed Elmosalamy</p>
         </div>
