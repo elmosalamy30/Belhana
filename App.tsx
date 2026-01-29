@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADS_WHATSAPP } from './constants';
+import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADS_WHATSAPP, ORDER_WHATSAPP, ADMIN_EMAIL } from './constants';
 import { Drink, Order, OrderItem, CLINICS, DoctorAd, DrinkCategory } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
@@ -31,6 +31,7 @@ const Icons = {
   ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
   Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   Minus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Mail: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
   XCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
   ChevronLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
   ChevronRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
@@ -214,6 +215,31 @@ const App: React.FC = () => {
       const success = await saveOrders([...currentOrders, newOrder]);
 
       if (success) {
+        // تحضير رسالة الواتساب والبريد
+        const itemsText = currentCartItems.map(i => `• ${i.drink.name} (عدد ${i.quantity})`).join('\n');
+        const summary = `طلب جديد من تطبيق بالهنا (#${orderId})\n\n` +
+                        `التفاصيل:\n${itemsText}\n\n` +
+                        `الإجمالي: ${cartTotalPrice} ج.م\n\n` +
+                        `الموقع:\n` +
+                        `- الدور: ${floorNumber}\n` +
+                        `- الرقم: ${clinicNumber}\n` +
+                        `- الاسم/المكان: ${contactInfo}\n` +
+                        (orderNote ? `- ملاحظات: ${orderNote}` : '');
+
+        // 1. فتح الواتساب
+        const whatsappUrl = `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(summary)}`;
+        window.open(whatsappUrl, '_blank');
+
+        // 2. إرسال بريد إلكتروني
+        const subject = `طلب جديد - بالهنا - #${orderId}`;
+        const mailtoLink = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(summary)}`;
+        
+        // استخدام setTimeout لتجنب حظر المتصفح لعمليتي فتح متتاليتين
+        setTimeout(() => {
+            window.location.href = mailtoLink;
+        }, 1000);
+        
+        // مسح السلة وإظهار رسالة النجاح
         setCart({});
         setIsPlacingOrder(false);
         setShowSuccessModal(true);
@@ -336,12 +362,6 @@ const App: React.FC = () => {
                             className="bg-emerald-500 text-white p-2 rounded-lg shadow-sm hover:bg-emerald-600 transition-colors"
                           >
                             <Icons.Check />
-                          </button>
-                          <button 
-                            onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                            className="bg-red-500 text-white p-2 rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-                          >
-                            <Icons.Trash />
                           </button>
                         </div>
                       )}
@@ -520,7 +540,17 @@ const App: React.FC = () => {
                     <textarea placeholder="سكر زيادة، بارد، إلخ..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-4 rounded-xl border border-gray-200 font-semibold h-20" />
                   </div>
                   <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-5 rounded-2xl text-white font-black text-xl shadow-2xl transition-all active:scale-95 flex flex-col items-center justify-center gap-1 ${COLORS.primary} disabled:opacity-50`}>
-                    {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب'}
+                    <div className="flex items-center gap-2">
+                       {isPlacingOrder ? 'جاري الإرسال...' : (
+                         <>
+                           <span>تأكيد وإرسال (واتساب + بريد)</span>
+                           <div className="flex gap-1">
+                             <Icons.WhatsApp />
+                             <Icons.Mail />
+                           </div>
+                         </>
+                       )}
+                    </div>
                   </button>
                 </div>
               </div>
