@@ -18,7 +18,9 @@ const Icons = {
   Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   Mail: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
   Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  XCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+  XCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+  ChevronLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  ChevronRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
@@ -53,9 +55,12 @@ const App: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState("-");
   const [adminFilter, setAdminFilter] = useState<'pending' | 'completed' | 'all' | 'cancelled'>('pending');
   const [isSendingReport, setIsSendingReport] = useState(false);
+  const [activeAdIndex, setActiveAdIndex] = useState(0);
   
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
+  const adCarouselTimerRef = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const filteredMenuItems = useMemo(() => {
     if (activeCategory === 'all') return MENU_ITEMS;
@@ -230,6 +235,38 @@ const App: React.FC = () => {
     }
   }, [orders, view]);
 
+  useEffect(() => {
+    if (view === 'menu' && DOCTOR_ADS.length > 0) {
+      adCarouselTimerRef.current = window.setInterval(() => {
+        setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
+      }, 5000);
+    }
+    return () => {
+      if (adCarouselTimerRef.current) clearInterval(adCarouselTimerRef.current);
+    };
+  }, [view]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diffX = touchStartX.current - touchEndX;
+
+    if (Math.abs(diffX) > 50) { // threshold for swipe
+      if (diffX > 0) {
+        // Swipe Left (Next)
+        setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
+      } else {
+        // Swipe Right (Previous)
+        setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
+      }
+    }
+    touchStartX.current = null;
+  };
+
   const cartTotalPrice = useMemo(() => 
     Object.values(cart).reduce((sum: number, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
@@ -357,6 +394,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleEmptyCart = () => {
+    if (confirm("هل أنت متأكد من إلغاء الطلب وإفراغ السلة؟")) {
+      setCart({});
+      setView('menu');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFDFB] text-gray-800 font-['Cairo'] flex flex-col">
       <header className="bg-amber-950 text-white p-4 sticky top-0 z-50 flex justify-between items-center border-b-4 border-orange-500 shadow-xl">
@@ -425,40 +469,78 @@ const App: React.FC = () => {
             </div>
 
             <div className="mt-12 pt-8 border-t border-amber-50">
-              <div className="flex justify-between items-end mb-6">
+              <div className="flex justify-between items-end mb-6 px-2">
                 <div>
-                  <h2 className="text-sm font-black text-amber-900/40 flex items-center gap-2 mb-1">المساحات الإعلانية 📢</h2>
-                  <p className="text-[10px] font-bold text-amber-900/30">تعرّف على نخبة أطباء مجمع هنا الطبي</p>
+                  <h2 className="text-sm font-black text-amber-900/40 flex items-center gap-2 mb-1">نخبة أطباء مجمع هنا 🩺</h2>
+                  <p className="text-[10px] font-bold text-amber-900/30">تعرّف على عياداتنا المتخصصة</p>
                 </div>
                 <div className="text-[9px] font-black text-orange-500/50">بواسطة شركة SCS</div>
               </div>
               
-              <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide">
-                {DOCTOR_ADS.map(d => (
-                  <div key={d.id} className="min-w-[240px] bg-white p-4 rounded-3xl border border-amber-50 flex items-center gap-4 shadow-sm">
-                    <img src={d.image} className="w-12 h-12 rounded-2xl object-cover" alt={d.name} />
-                    <div className="leading-tight">
-                      <div className="font-black text-amber-950 text-xs">{d.name}</div>
-                      <div className="text-[10px] text-gray-400 font-bold">{d.specialty}</div>
-                      <div className="text-[9px] text-orange-500 font-bold mt-1">{d.location}</div>
+              <div 
+                className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-white to-amber-50/30 border border-amber-100 p-6 shadow-xl touch-pan-y"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="flex flex-col md:flex-row gap-8 items-center">
+                  <div className="flex-1 w-full space-y-6">
+                    <div className="relative h-48 md:h-40 overflow-hidden rounded-3xl">
+                      {DOCTOR_ADS.map((d, index) => (
+                        <div 
+                          key={d.id} 
+                          className={`absolute inset-0 transition-all duration-700 ease-in-out transform flex items-center gap-5 p-2 ${
+                            index === activeAdIndex ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95 pointer-events-none'
+                          }`}
+                        >
+                          <div className="relative flex-shrink-0">
+                            <img src={d.image} className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] object-cover shadow-lg border-4 border-white" alt={d.name} />
+                            <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-md">طبيب متميز</div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="font-black text-amber-950 text-lg md:text-xl leading-tight">{d.name}</div>
+                            <div className="inline-block bg-orange-100/50 text-orange-700 text-[10px] md:text-xs font-black px-3 py-1 rounded-full">{d.specialty}</div>
+                            <div className="flex items-center gap-1.5 text-gray-500 font-bold text-[10px] md:text-xs">
+                              <Icons.MapPin />
+                              <span>{d.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center px-2">
+                      <div className="flex gap-1.5">
+                        {DOCTOR_ADS.map((_, i) => (
+                          <button 
+                            key={i} 
+                            onClick={() => setActiveAdIndex(i)}
+                            className={`h-1.5 transition-all duration-300 rounded-full ${i === activeAdIndex ? 'w-6 bg-orange-500' : 'w-1.5 bg-orange-200'}`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length)} className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-amber-950 hover:bg-orange-50 transition-colors"><Icons.ChevronRight /></button>
+                        <button onClick={() => setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length)} className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-amber-950 hover:bg-orange-50 transition-colors"><Icons.ChevronLeft /></button>
+                      </div>
                     </div>
                   </div>
-                ))}
-                
-                <a 
-                  href={`https://wa.me/${ADS_WHATSAPP}?text=${encodeURIComponent('مرحباً شركة SCS، أريد الاستفسار عن تفاصيل إضافة إعلان لعيادتي في تطبيق بالهنا.')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="min-w-[240px] bg-amber-50/50 border-2 border-dashed border-amber-200 p-4 rounded-3xl flex items-center gap-4 hover:bg-amber-100/50 transition-colors group"
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-amber-200/50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
-                    <Icons.Plus />
+                  
+                  <div className="w-full md:w-auto">
+                    <a 
+                      href={`https://wa.me/${ADS_WHATSAPP}?text=${encodeURIComponent('مرحباً شركة SCS، أريد الاستفسار عن تفاصيل إضافة إعلان لعيادتي في تطبيق بالهنا.')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-center gap-4 bg-amber-950 text-white p-6 rounded-3xl hover:bg-orange-600 transition-all duration-500 shadow-lg hover:shadow-orange-200/50 w-full md:min-w-[200px]"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                        <Icons.Plus />
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-xs">أعلن معنا هنا</div>
+                        <div className="text-[10px] text-orange-300 font-bold">تواصل مع SCS</div>
+                      </div>
+                    </a>
                   </div>
-                  <div className="leading-tight">
-                    <div className="font-black text-amber-900 text-xs">أعلن معنا هنا</div>
-                    <div className="text-[9px] text-amber-700/60 font-bold mt-1">تواصل مع إدارة شركة SCS</div>
-                  </div>
-                </a>
+                </div>
               </div>
             </div>
           </div>
@@ -514,16 +596,20 @@ const App: React.FC = () => {
                 <input value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="ملاحظات (مثلاً: سكر زيادة)" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
               </div>
               
-              <button onClick={handlePlaceOrder} disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim()} className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim() ? 'bg-gray-200 text-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}>
-                {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب 🚀'}
-              </button>
+              <div className="pt-4 space-y-3">
+                <button onClick={handlePlaceOrder} disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim()} className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim() ? 'bg-gray-200 text-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}>
+                  {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب 🚀'}
+                </button>
+                <button onClick={handleEmptyCart} className="w-full py-3 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-colors">
+                  إلغاء الطلب وإفراغ السلة
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {view === 'admin' && (
           <div className="space-y-6 animate-in fade-in duration-500">
-            {/* ملخص إحصائي سريع بارز جداً في الأعلى */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-orange-100 text-center flex flex-col items-center justify-center">
                 <div className="text-[11px] font-black text-orange-500/60 mb-1 flex items-center gap-1"><Icons.Clock /> بانتظار التحضير</div>
