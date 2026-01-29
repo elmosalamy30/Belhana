@@ -186,8 +186,9 @@ const App: React.FC = () => {
       alert("يرجى إكمال بيانات الموقع والاسم."); return; 
     }
     setIsPlacingOrder(true);
+    const orderId = Math.random().toString(36).substr(2, 5).toUpperCase();
     const newOrder: Order = {
-      id: Math.random().toString(36).substr(2, 5).toUpperCase(),
+      id: orderId,
       items: (Object.values(cart) as CartItem[]).map(i => ({ 
         drinkId: i.drink.id, 
         drinkName: i.drink.name, 
@@ -211,16 +212,30 @@ const App: React.FC = () => {
     if (success) {
       setCart({});
       setShowSuccessModal(true);
+      return { success: true, orderId };
     } else {
       alert("حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.");
+      return { success: false };
     }
   };
 
-  const handleWhatsAppConfirm = () => {
-    const itemsText = (Object.values(cart) as CartItem[]).map(i => `${i.drink.name} x${i.quantity}`).join('\n');
-    const text = `طلب جديد من تطبيق "بالهنا":\n\nالطلبات:\n${itemsText}\n\nالإجمالي: ${cartTotalPrice} ج.م\n\nالمكان:\nالدور: ${floorNumber}\nالعيادة/الغرفة: ${clinicNumber}\nالاسم: ${contactInfo}\nملاحظات: ${orderNote || 'لا يوجد'}`;
-    window.open(`https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`);
-    handlePlaceOrder();
+  const handleUnifiedConfirm = async () => {
+    const result = await handlePlaceOrder();
+    if (result.success) {
+      const itemsText = (Object.values(cart) as CartItem[]).map(i => `${i.drink.name} x${i.quantity}`).join('\n');
+      const orderDetails = `تفاصيل الطلب (#${result.orderId}):\n\nالطلبات:\n${itemsText}\n\nالإجمالي: ${cartTotalPrice} ج.م\n\nالموقع:\nالدور: ${floorNumber}\nالعيادة/الغرفة: ${clinicNumber}\nالاسم/المكان: ${contactInfo}\nملاحظات: ${orderNote || 'لا يوجد'}`;
+
+      // 1. فتح الواتساب في نافذة جديدة
+      const whatsappUrl = `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent('طلب جديد من تطبيق "بالهنا":\n\n' + orderDetails)}`;
+      window.open(whatsappUrl, '_blank');
+
+      // 2. فتح الجيميل (Mailto) بعد تأخير بسيط لضمان فتح الأول
+      setTimeout(() => {
+        const subject = `طلب جديد من تطبيق بالهنا - #${result.orderId}`;
+        const mailtoLink = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(orderDetails)}`;
+        window.location.href = mailtoLink;
+      }, 800);
+    }
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: 'completed' | 'cancelled') => {
@@ -642,20 +657,23 @@ const App: React.FC = () => {
 
                   <div className="pt-2 flex flex-col gap-3">
                     <button 
-                      onClick={handlePlaceOrder}
+                      onClick={handleUnifiedConfirm}
                       disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo}
-                      className={`w-full py-4 rounded-2xl text-white font-black text-lg shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 ${COLORS.primary}`}
+                      className={`w-full py-5 rounded-2xl text-white font-black text-xl shadow-2xl transition-all active:scale-95 flex flex-col items-center justify-center gap-1 disabled:opacity-50 ${COLORS.primary}`}
                     >
-                      {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب الآن'}
+                      <div className="flex items-center gap-3">
+                        {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد وإرسال الطلب'}
+                      </div>
+                      {!isPlacingOrder && (
+                        <div className="text-[10px] opacity-70 flex items-center gap-2">
+                           <Icons.WhatsApp /> + <Icons.Mail /> سيفتح واتساب والجيميل معاً
+                        </div>
+                      )}
                     </button>
                     
-                    <button 
-                      onClick={handleWhatsAppConfirm}
-                      disabled={!floorNumber || !clinicNumber || !contactInfo}
-                      className="w-full py-3 rounded-2xl text-emerald-600 font-bold border-2 border-emerald-500/30 flex items-center justify-center gap-2 hover:bg-emerald-50 disabled:opacity-50"
-                    >
-                      <Icons.WhatsApp /> تأكيد عبر واتساب (أسرع)
-                    </button>
+                    <p className="text-center text-[10px] text-gray-400 font-bold px-4">
+                       بالضغط على الزر، سيتم حفظ طلبك وفتح تطبيقات المراسلة تلقائياً لإبلاغ الإدارة.
+                    </p>
                   </div>
                 </div>
               </>
