@@ -29,15 +29,15 @@ export const MENU_ITEMS: Drink[] = [
   { id: 'c6', name: 'مياه معدنية كبيرة', price: 12, category: 'cold', image: 'https://archive.org/download/baraka_202601/__ia_thumb.jpg' },
 
   // --- العصائر (juice) ---
-  { id: 'j1', name: 'عصير تفاح جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?q=80&w=400' },
-  { id: 'j2', name: 'عصير برتقال جهينة', price: 15, category: 'juice', image: 'https://archive.org/download/0004021-1-450/__ia_thumb.jpg' },
-  { id: 'j3', name: 'عصير كوكتيل جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1603569283847-aa295f0d016a?q=80&w=400' },
-  { id: 'j4', name: 'عصير مانجا جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1591073113125-e46713c829ed?q=80&w=400' },
+  { id: 'j1', name: 'عصير جهينة تفاح', price: 15, category: 'juice', image: 'https://archive.org/download/images-12_20260129/images%20%2813%29_thumb.jpg' },
+  { id: 'j2', name: 'عصير جهينة برتقال', price: 15, category: 'juice', image: 'https://archive.org/download/0004021-1-450/__ia_thumb.jpg' },
+  { id: 'j3', name: 'عصير جهينة كوكتيل', price: 15, category: 'juice', image: 'https://archive.org/download/images-12_20260129/images%20%2814%29_thumb.jpg' },
+  { id: 'j4', name: 'عصير جهينة مانجو', price: 15, category: 'juice', image: 'https://archive.org/download/images-12_20260129/images%20%2815%29_thumb.jpg' },
 
   // --- مأكولات جاهزة (food) ---
   { id: 'f1', name: 'إندومي خضار', price: 15, category: 'food', image: 'https://archive.org/download/71-mtb-9-tw-9i-l.-ac-uf-350-350-ql-80/__ia_thumb.jpg' },
-  { id: 'f2', name: 'إندومي بالفراخ', price: 15, category: 'food', image: 'https://images.unsplash.com/photo-1552611052-33e04de081de?q=80&w=400' },
-  { id: 'f3', name: 'إندومي باللحمة', price: 15, category: 'food', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?q=80&w=400' },
+  { id: 'f2', name: 'إندومي بالفراخ', price: 15, category: 'food', image: 'https://archive.org/download/images-12_20260129/images%20%2812%29_thumb.jpg' },
+  { id: 'f3', name: 'إندومي لحمة', price: 15, category: 'food', image: 'https://archive.org/download/images-12_20260129/616-4DL9msL._AC_UF350%2C350_QL80__thumb.jpg' },
 ];
 
 export const DOCTOR_ADS: DoctorAd[] = [
