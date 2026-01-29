@@ -147,11 +147,9 @@ const App: React.FC = () => {
     return () => { if (adCarouselTimerRef.current) clearInterval(adCarouselTimerRef.current); };
   }, []);
 
-  // Fix: Explicitly cast Object.values(cart) and sum to fix 'unknown' inference errors
   const cartTotalPrice = useMemo(() => 
     (Object.values(cart) as CartItem[]).reduce((sum: number, item) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
-  // Fix: Explicitly cast Object.values(cart) and sum to fix 'unknown' inference errors
   const cartTotalItems = useMemo(() =>
     (Object.values(cart) as CartItem[]).reduce((sum: number, item) => sum + item.quantity, 0), [cart]);
 
@@ -175,7 +173,6 @@ const App: React.FC = () => {
     setIsPlacingOrder(true);
     const newOrder: Order = {
       id: Math.random().toString(36).substr(2, 5).toUpperCase(),
-      // Fix: Explicitly cast Object.values(cart) to CartItem[] to ensure correct property access
       items: (Object.values(cart) as CartItem[]).map(i => ({ 
         drinkId: i.drink.id, 
         drinkName: i.drink.name, 
@@ -199,14 +196,12 @@ const App: React.FC = () => {
     if (success) {
       setCart({});
       setShowSuccessModal(true);
-      // Wait a bit then auto-redirect or let user decide
     } else {
       alert("حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.");
     }
   };
 
   const handleWhatsAppConfirm = () => {
-    // Fix: Explicitly cast Object.values(cart) to CartItem[] to ensure correct property access
     const itemsText = (Object.values(cart) as CartItem[]).map(i => `${i.drink.name} x${i.quantity}`).join('\n');
     const text = `طلب جديد من تطبيق "بالهنا":\n\nالطلبات:\n${itemsText}\n\nالإجمالي: ${cartTotalPrice} ج.م\n\nالمكان:\nالدور: ${floorNumber}\nالعيادة/الغرفة: ${clinicNumber}\nالاسم: ${contactInfo}\nملاحظات: ${orderNote || 'لا يوجد'}`;
     window.open(`https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`);
@@ -237,8 +232,6 @@ const App: React.FC = () => {
       setLoginError(true);
     }
   };
-
-  // --- Views ---
 
   if (view === 'admin') {
     const filteredOrders = orders
@@ -527,7 +520,6 @@ const App: React.FC = () => {
               <>
                 <div className={`${COLORS.surface} rounded-2xl shadow-lg border ${COLORS.border} overflow-hidden`}>
                   <div className="p-6 space-y-4">
-                    {/* Fix: Explicitly cast Object.values(cart) to CartItem[] to ensure correct property access inside map */}
                     {(Object.values(cart) as CartItem[]).map(item => (
                       <div key={item.drink.id} className="flex items-center justify-between gap-4 py-3 border-b border-gray-50 last:border-0">
                         <div className="flex items-center gap-4">
@@ -716,7 +708,7 @@ const App: React.FC = () => {
           <img src={LOGO_URL} alt="Bal Hana" className="w-16 grayscale opacity-20" />
           <div className="space-y-1">
             <p className="text-xs font-bold text-gray-400">جميع الحقوق محفوظة &copy; {new Date().getFullYear()}</p>
-            <p className="text-[10px] font-black tracking-widest text-amber-500/50 uppercase">Bal Hana Delivery Service</p>
+            <p className="text-[10px] font-black tracking-widest text-amber-500/50 uppercase">Created by Dr Ahmed Elmosalamy</p>
           </div>
         </div>
         
