@@ -16,7 +16,7 @@ export const MENU_ITEMS: Drink[] = [
   { id: 'q1', name: 'قهوة سادة', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=400' },
   { id: 'q2', name: 'قهوة زيادة', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=400' },
   { id: 'q3', name: 'قهوة على الريحة', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=400' },
-  { id: 'q4', name: 'قهوة فرنساوي', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1534773728080-33d31da27ae5?q=80&w=400' },
+  { id: 'q4', name: 'قهوة فرنساوي', price: 20, category: 'coffee', image: 'https://archive.org/download/113_20260129/__ia_thumb.jpg' },
   { id: 'q5', name: 'قهوة تركي', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1579992357154-faf4bfe95b3d?q=80&w=400' },
   { id: 'q6', name: 'قهوة تركي محوج', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1580915411954-282cb1b0d780?q=80&w=400' },
   { id: 'q7', name: 'نسكافيه بلاك', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?q=80&w=400' },
