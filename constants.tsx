@@ -35,7 +35,7 @@ export const MENU_ITEMS: Drink[] = [
   { id: 'j4', name: 'عصير مانجا جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1591073113125-e46713c829ed?q=80&w=400' },
 
   // --- مأكولات جاهزة (food) ---
-  { id: 'f1', name: 'إندومي خضار', price: 15, category: 'food', image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=400' },
+  { id: 'f1', name: 'إندومي خضار', price: 15, category: 'food', image: 'https://archive.org/download/71-mtb-9-tw-9i-l.-ac-uf-350-350-ql-80/__ia_thumb.jpg' },
   { id: 'f2', name: 'إندومي بالفراخ', price: 15, category: 'food', image: 'https://images.unsplash.com/photo-1552611052-33e04de081de?q=80&w=400' },
   { id: 'f3', name: 'إندومي باللحمة', price: 15, category: 'food', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?q=80&w=400' },
 ];
