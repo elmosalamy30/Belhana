@@ -30,7 +30,7 @@ export const MENU_ITEMS: Drink[] = [
 
   // --- العصائر (juice) ---
   { id: 'j1', name: 'عصير تفاح جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?q=80&w=400' },
-  { id: 'j2', name: 'عصير برتقال جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1600271886301-37103719888d?q=80&w=400' },
+  { id: 'j2', name: 'عصير برتقال جهينة', price: 15, category: 'juice', image: 'https://archive.org/download/0004021-1-450/__ia_thumb.jpg' },
   { id: 'j3', name: 'عصير كوكتيل جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1603569283847-aa295f0d016a?q=80&w=400' },
   { id: 'j4', name: 'عصير مانجا جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1591073113125-e46713c829ed?q=80&w=400' },
 
