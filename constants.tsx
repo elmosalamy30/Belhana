@@ -23,12 +23,10 @@ export const MENU_ITEMS: Drink[] = [
   { id: 'q8', name: 'نسكافيه حليب', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?q=80&w=400' },
 
   // --- المشروبات الغازية والمياه (cold) ---
-  { id: 'c1', name: 'بيبسي', price: 20, category: 'cold', image: 'https://images.unsplash.com/photo-1581639050676-1e9ca90efd50?q=80&w=400' },
-  { id: 'c2', name: 'بيبسي دايت', price: 20, category: 'cold', image: 'https://images.unsplash.com/photo-1629203851022-36c64237d946?q=80&w=400' },
-  { id: 'c3', name: 'فيروز', price: 20, category: 'cold', image: 'https://images.unsplash.com/photo-1625772290748-39123d81861e?q=80&w=400' },
-  { id: 'c4', name: '7 أب', price: 20, category: 'cold', image: 'https://images.unsplash.com/photo-1622708782596-13d9e605dcad?q=80&w=400' },
+  { id: 'c1', name: 'بيبسي', price: 20, category: 'cold', image: 'https://archive.org/download/f132784205396458038087-1/78e406f6-0e8e-4fdf-a670-043536bf0412-600x600_result_thumb.jpg' },
+  { id: 'c2', name: 'بيبسي دايت', price: 20, category: 'cold', image: 'https://archive.org/download/f132784205396458038087-1/f132784205396458038087-1_thumb.jpg' },
   { id: 'c5', name: 'مياه معدنية صغيرة', price: 7, category: 'cold', image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?q=80&w=400' },
-  { id: 'c6', name: 'مياه معدنية كبيرة', price: 12, category: 'cold', image: 'https://images.unsplash.com/photo-1560023907-5f339617ea30?q=80&w=400' },
+  { id: 'c6', name: 'مياه معدنية كبيرة', price: 12, category: 'cold', image: 'https://archive.org/download/baraka_202601/__ia_thumb.jpg' },
 
   // --- العصائر (juice) ---
   { id: 'j1', name: 'عصير تفاح جهينة', price: 15, category: 'juice', image: 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?q=80&w=400' },
