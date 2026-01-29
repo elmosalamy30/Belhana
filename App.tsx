@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ORDER_WHATSAPP, ADS_WHATSAPP, ADMIN_EMAIL } from './constants';
 import { Drink, Order, OrderItem, CLINICS, DoctorAd, DrinkCategory } from './types';
@@ -6,6 +5,22 @@ import { Drink, Order, OrderItem, CLINICS, DoctorAd, DrinkCategory } from './typ
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
 const GLOBAL_SYNC_ID = "bal_hana_v7_final_secure_sync_2025"; 
 const API_URL = `https://kvdb.io/6E3qV3pE9yU5vH7N9w4G9x/${GLOBAL_SYNC_ID}`;
+
+// Updated colors to match the logo precisely
+const COLORS = {
+  primary: 'bg-[#2D1B14]',       // Deep Coffee / Espresso
+  primaryHover: 'hover:bg-[#3D261C]',
+  secondary: 'bg-[#D97706]',     // Rich Orange / Gold from Logo
+  secondaryHover: 'hover:bg-[#B45309]',
+  accent: 'text-[#D97706]',
+  accentBg: 'bg-[#D97706]/10',
+  border: 'border-[#D97706]/30',
+  borderFocus: 'border-[#D97706]',
+  bgLight: 'bg-[#FDF8F3]',       // Warm Cream background
+  surface: 'bg-white',
+  textMain: 'text-[#2D1B14]',
+  textMuted: 'text-[#2D1B14]/60'
+};
 
 const Icons = {
   Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
@@ -24,7 +39,6 @@ const Icons = {
 };
 
 interface CartItem { drink: Drink; quantity: number; }
-
 type ViewState = 'menu' | 'cart' | 'admin';
 
 const CATEGORIES: { id: 'all' | DrinkCategory; label: string; icon: string }[] = [
@@ -51,7 +65,6 @@ const App: React.FC = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassInput, setAdminPassInput] = useState("");
   const [loginError, setLoginError] = useState(false);
-  const [lastOrderLink, setLastOrderLink] = useState("");
   const [lastSyncTime, setLastSyncTime] = useState("-");
   const [adminFilter, setAdminFilter] = useState<'pending' | 'completed' | 'all' | 'cancelled'>('pending');
   const [isSendingReport, setIsSendingReport] = useState(false);
@@ -60,21 +73,18 @@ const App: React.FC = () => {
   const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'));
   const prevOrdersRef = useRef<string[]>([]);
   const adCarouselTimerRef = useRef<number | null>(null);
-  const touchStartX = useRef<number | null>(null);
 
   const filteredMenuItems = useMemo(() => {
     if (activeCategory === 'all') return MENU_ITEMS;
     return MENU_ITEMS.filter(item => item.category === activeCategory);
   }, [activeCategory]);
 
-  const stats = useMemo(() => {
-    return {
-      pending: orders.filter(o => o.status === 'pending').length,
-      completed: orders.filter(o => o.status === 'completed').length,
-      cancelled: orders.filter(o => o.status === 'cancelled').length,
-      total: orders.length
-    };
-  }, [orders]);
+  const stats = useMemo(() => ({
+    pending: orders.filter(o => o.status === 'pending').length,
+    completed: orders.filter(o => o.status === 'completed').length,
+    cancelled: orders.filter(o => o.status === 'cancelled').length,
+    total: orders.length
+  }), [orders]);
 
   const getRoomsForFloor = (floor: string) => {
     if (floor === "0") return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
@@ -86,25 +96,14 @@ const App: React.FC = () => {
 
   const availableRooms = useMemo(() => getRoomsForFloor(floorNumber), [floorNumber]);
 
-  const setView = (newView: ViewState, replace: boolean = false) => {
-    if (newView === view) return;
-    if (replace) {
-      window.history.replaceState({ view: newView }, '', '');
-    } else {
-      window.history.pushState({ view: newView }, '', '');
-    }
+  const setView = (newView: ViewState) => {
+    window.history.pushState({ view: newView }, '', '');
     setViewInternal(newView);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
-    window.history.replaceState({ view: 'menu' }, '', '');
-    const handlePopState = (event: PopStateEvent) => {
-      if (event.state && event.state.view) {
-        setViewInternal(event.state.view);
-      } else {
-        setViewInternal('menu');
-      }
-    };
+    const handlePopState = (e: PopStateEvent) => setViewInternal(e.state?.view || 'menu');
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -125,97 +124,13 @@ const App: React.FC = () => {
 
   const saveOrders = async (data: Order[]) => {
     try {
-      const res = await fetch(API_URL, {
+      await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify(data.slice(-50)),
+        body: JSON.stringify(data.slice(-100)),
         headers: { 'Content-Type': 'application/json' }
       });
-      return res.ok;
+      return true;
     } catch (e) { return false; }
-  };
-
-  const sendEmailNotification = async (order: Order) => {
-    try {
-      const floorLabel = order.floorNumber === "0" ? "الأرضي" : `الدور ${order.floorNumber}`;
-      const itemsList = order.items.map(i => `${i.drinkName} (x${i.quantity})`).join(', ');
-      
-      const formData = new FormData();
-      formData.append('Order_ID', order.id);
-      formData.append('Location', `${floorLabel} - عيادة ${order.clinicNumber}`);
-      formData.append('Customer_Name', order.contactInfo);
-      formData.append('Order_Details', itemsList);
-      formData.append('Total_Price', `${order.totalPrice} EGP`);
-      formData.append('Notes', order.notes || 'No notes');
-      formData.append('_subject', `New Order from Bal Hana: #${order.id}`);
-      formData.append('_captcha', 'false');
-
-      await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
-        method: 'POST',
-        body: formData,
-      });
-    } catch (err) {
-      console.error("Failed to send email notification", err);
-    }
-  };
-
-  const sendDailyReportToEmail = async () => {
-    if (orders.length === 0) {
-      alert("لا توجد طلبات لإرسال جرد بها.");
-      return;
-    }
-
-    if (!confirm("هل تريد إرسال تقرير الجرد الحالي إلى البريد الإلكتروني؟")) return;
-
-    setIsSendingReport(true);
-    try {
-      const summary: Record<string, { qty: number; total: number }> = {};
-      let totalRevenue = 0;
-      let completedCount = 0;
-
-      orders.forEach(order => {
-        if (order.status === 'completed') {
-          completedCount++;
-          order.items.forEach(item => {
-            if (!summary[item.drinkName]) {
-              summary[item.drinkName] = { qty: 0, total: 0 };
-            }
-            summary[item.drinkName].qty += item.quantity;
-            summary[item.drinkName].total += (item.price * item.quantity);
-            totalRevenue += (item.price * item.quantity);
-          });
-        }
-      });
-
-      const reportText = Object.entries(summary)
-        .map(([name, data]) => `- ${name}: ${data.qty} قطعة (إجمالي ${data.total} ج.م)`)
-        .join('\n');
-
-      const formData = new FormData();
-      formData.append('Date', new Date().toLocaleDateString('ar-EG'));
-      formData.append('Time', new Date().toLocaleTimeString('ar-EG'));
-      formData.append('Total_Orders_Completed', completedCount.toString());
-      formData.append('Total_Revenue', `${totalRevenue} EGP`);
-      formData.append('Inventory_Details', reportText || "لا توجد مبيعات مكتملة بعد.");
-      formData.append('_subject', `Daily Inventory Report - Bal Hana - ${new Date().toLocaleDateString()}`);
-      formData.append('_template', 'table');
-      formData.append('_captcha', 'false');
-
-      const res = await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (res.ok) {
-        alert("تم إرسال تقرير الجرد بنجاح إلى Gmail.");
-      } else {
-        throw new Error("Failed to send email");
-      }
-    } catch (err) {
-      alert("حدث خطأ أثناء إرسال التقرير. يرجى المحاولة لاحقاً.");
-      console.error(err);
-    } finally {
-      setIsSendingReport(false);
-    }
   };
 
   useEffect(() => {
@@ -224,51 +139,8 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [view]);
 
-  useEffect(() => {
-    if (view === 'admin' && orders.length > 0) {
-      const pendingIds = orders.filter(o => o.status === 'pending').map(o => o.id);
-      const hasNew = pendingIds.some(id => !prevOrdersRef.current.includes(id));
-      if (hasNew) {
-        notificationSound.current.play().catch(() => {});
-        prevOrdersRef.current = pendingIds;
-      }
-    }
-  }, [orders, view]);
-
-  useEffect(() => {
-    if (view === 'menu' && DOCTOR_ADS.length > 0) {
-      adCarouselTimerRef.current = window.setInterval(() => {
-        setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
-      }, 5000);
-    }
-    return () => {
-      if (adCarouselTimerRef.current) clearInterval(adCarouselTimerRef.current);
-    };
-  }, [view]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diffX = touchStartX.current - touchEndX;
-
-    if (Math.abs(diffX) > 50) { // threshold for swipe
-      if (diffX > 0) {
-        // Swipe Left (Next)
-        setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
-      } else {
-        // Swipe Right (Previous)
-        setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
-      }
-    }
-    touchStartX.current = null;
-  };
-
   const cartTotalPrice = useMemo(() => 
-    Object.values(cart).reduce((sum: number, item: CartItem) => sum + (item.drink.price * item.quantity), 0), [cart]);
+    Object.values(cart).reduce((sum, item) => sum + (item.drink.price * item.quantity), 0), [cart]);
 
   const updateCart = (drink: Drink, delta: number) => {
     setCart(prev => {
@@ -285,481 +157,31 @@ const App: React.FC = () => {
 
   const handlePlaceOrder = async () => {
     if (!floorNumber || !clinicNumber || !contactInfo.trim()) { 
-      alert("يرجى اختيار الدور ورقم العيادة وكتابة الاسم"); 
-      return; 
+      alert("يرجى إكمال بيانات الموقع والاسم."); return; 
     }
     setIsPlacingOrder(true);
     const newOrder: Order = {
       id: Math.random().toString(36).substr(2, 5).toUpperCase(),
-      items: Object.values(cart).map((i: CartItem) => ({ drinkId: i.drink.id, drinkName: i.drink.name, quantity: i.quantity, price: i.drink.price })),
+      items: Object.values(cart).map(i => ({ 
+        drinkId: i.drink.id, 
+        drinkName: i.drink.name, 
+        quantity: i.quantity, 
+        price: i.drink.price 
+      })),
       totalPrice: cartTotalPrice,
-      clinicName: selectedClinic || "عيادة المجمع",
-      clinicNumber: clinicNumber,
-      floorNumber: floorNumber,
-      contactInfo: contactInfo.trim(),
+      clinicName: selectedClinic,
+      clinicNumber,
+      floorNumber,
+      contactInfo,
       status: 'pending',
       timestamp: Date.now(),
-      notes: orderNote.trim() || undefined
+      notes: orderNote
     };
 
     const currentOrders = await fetchOrders() || orders;
-    const updated = [...currentOrders, newOrder];
+    const success = await saveOrders([...currentOrders, newOrder]);
     
-    await saveOrders(updated);
-    sendEmailNotification(newOrder);
-    
-    const floorLabel = newOrder.floorNumber === "0" ? "الأرضي" : `الدور ${newOrder.floorNumber}`;
-    const locationDetails = `📍 *المكان:* ${floorLabel} | عيادة: ${newOrder.clinicNumber}`;
-
-    const msg = encodeURIComponent(
-      `☕ *طلب مشروبات من تطبيق بالهنا*\n` +
-      `--------------------------\n` +
-      `${locationDetails}\n` +
-      `👤 *الاسم:* ${newOrder.contactInfo}\n` +
-      `🥤 *الطلبات:* ${newOrder.items.map(i => `${i.drinkName} (x${i.quantity})`).join('، ')}\n` +
-      `💰 *الإجمالي:* ${newOrder.totalPrice} ج.م\n` +
-      (newOrder.notes ? `📝 *ملاحظات:* ${newOrder.notes}` : '')
-    );
-    setLastOrderLink(`https://wa.me/${ORDER_WHATSAPP}?text=${msg}`);
-    setCart({});
-    setIsPlacingOrder(false);
-    setShowSuccessModal(true);
-  };
-
-  const updateStatus = async (id: string, s: Order['status']) => {
-    const current = await fetchOrders() || orders;
-    const updated = current.map(o => o.id === id ? { ...o, status: s } : o);
-    setOrders(updated);
-    await saveOrders(updated);
-  };
-
-  const clearHistory = async () => {
-    if (confirm("هل تريد مسح جميع الطلبات المنتهية والملغاة؟")) {
-      const active = orders.filter(o => o.status === 'pending');
-      setOrders(active);
-      await saveOrders(active);
-    }
-  };
-
-  const handleAdminLogin = () => {
-    if (adminPassInput.trim() === ADMIN_PASSWORD) {
-      setViewInternal('admin');
-      setShowAdminLogin(false);
-      setAdminPassInput("");
-      setLoginError(false);
-    } else {
-      setLoginError(true);
-    }
-  };
-
-  const downloadReport = () => {
-    if (orders.length === 0) {
-      alert("لا توجد بيانات لتحميلها");
-      return;
-    }
-    const headers = ["رقم الطلب", "التاريخ", "الوقت", "الدور", "رقم العيادة", "الاسم", "الطلبات", "الإجمالي", "الحالة", "ملاحظات"];
-    const rows = orders.map(o => {
-      const date = new Date(o.timestamp);
-      return [
-        o.id,
-        date.toLocaleDateString('ar-EG'),
-        date.toLocaleTimeString('ar-EG'),
-        o.floorNumber === "0" ? "الأرضي" : o.floorNumber,
-        o.clinicNumber,
-        o.contactInfo,
-        o.items.map(i => `${i.drinkName} (${i.quantity})`).join(' - '),
-        o.totalPrice,
-        o.status === 'pending' ? 'جاري التنفيذ' : o.status === 'completed' ? 'تم التوصيل' : 'تم الإلغاء',
-        o.notes || ''
-      ];
-    });
-    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `تقرير_بالهنا_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const filteredOrders = orders.filter(o => adminFilter === 'all' ? true : o.status === adminFilter).sort((a,b) => b.timestamp - a.timestamp);
-
-  const handleBackToMenu = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      setViewInternal('menu');
-    }
-  };
-
-  const handleEmptyCart = () => {
-    if (confirm("هل أنت متأكد من إلغاء الطلب وإفراغ السلة؟")) {
+    if (success) {
       setCart({});
-      setView('menu');
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#FFFDFB] text-gray-800 font-['Cairo'] flex flex-col">
-      <header className="bg-amber-950 text-white p-4 sticky top-0 z-50 flex justify-between items-center border-b-4 border-orange-500 shadow-xl">
-        <div className="flex items-center gap-3">
-          {view !== 'menu' && (
-            <button onClick={handleBackToMenu} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label="الرجوع">
-              <Icons.ArrowRight />
-            </button>
-          )}
-          <div className="bg-white p-1 rounded-xl w-10 h-10 shadow-inner">
-            <img src={LOGO_URL} className="w-full h-full object-contain" alt="بالهنا" />
-          </div>
-          <h1 className="font-black text-xl tracking-tight">بالهنا</h1>
-        </div>
-        <button onClick={() => view === 'admin' ? handleBackToMenu() : setShowAdminLogin(true)} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-[11px] font-bold border border-white/5 transition-all">
-          {view === 'admin' ? 'الرجوع للمنيو' : 'لوحة الإدارة'}
-        </button>
-      </header>
-
-      {view === 'menu' && (
-        <nav className="bg-white/80 backdrop-blur-md sticky top-[72px] z-40 border-b border-amber-50 shadow-sm">
-          <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide container mx-auto max-w-5xl no-scrollbar">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl whitespace-nowrap text-xs font-black transition-all border-2 ${
-                  activeCategory === cat.id 
-                    ? 'bg-amber-950 text-white border-amber-950 shadow-md scale-105' 
-                    : 'bg-white text-amber-900/60 border-amber-50 hover:bg-amber-50 hover:border-amber-100'
-                }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
-      )}
-
-      <main className="p-4 container mx-auto max-w-5xl flex-1 pb-24">
-        {view === 'menu' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredMenuItems.map(drink => (
-                <div key={drink.id} className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-amber-50 flex h-32 hover:shadow-md transition-shadow">
-                  <img src={drink.image} className="w-32 h-full object-cover" alt={drink.name} loading="lazy" />
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <h3 className="font-black text-amber-950 text-sm">{drink.name}</h3>
-                    <div className="flex justify-between items-center">
-                      <span className="text-orange-600 font-black">{drink.price} ج.م</span>
-                      <div className="flex items-center gap-3 bg-amber-50 rounded-2xl p-1">
-                        {cart[drink.id] && (
-                          <button onClick={() => updateCart(drink, -1)} className="w-8 h-8 flex items-center justify-center font-bold text-lg">-</button>
-                        )}
-                        {cart[drink.id] && <span className="font-black text-sm">{cart[drink.id].quantity}</span>}
-                        <button onClick={() => updateCart(drink, 1)} className="w-8 h-8 bg-amber-950 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md">+</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filteredMenuItems.length === 0 && (
-                <div className="col-span-full py-20 text-center opacity-20 font-black italic">لا توجد أصناف في هذا التصنيف حالياً..</div>
-              )}
-            </div>
-
-            <div className="mt-12 pt-8 border-t border-amber-50">
-              <div className="flex justify-between items-end mb-6 px-2">
-                <div>
-                  <h2 className="text-sm font-black text-amber-900/40 flex items-center gap-2 mb-1">نخبة أطباء مجمع هنا 🩺</h2>
-                  <p className="text-[10px] font-bold text-amber-900/30">تعرّف على عياداتنا المتخصصة</p>
-                </div>
-                <div className="text-[9px] font-black text-orange-500/50">بواسطة شركة SCS</div>
-              </div>
-              
-              <div 
-                className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-white to-amber-50/30 border border-amber-100 p-6 shadow-xl touch-pan-y"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              >
-                <div className="flex flex-col md:flex-row gap-8 items-center">
-                  <div className="flex-1 w-full space-y-6">
-                    <div className="relative h-48 md:h-40 overflow-hidden rounded-3xl">
-                      {DOCTOR_ADS.map((d, index) => (
-                        <div 
-                          key={d.id} 
-                          className={`absolute inset-0 transition-all duration-700 ease-in-out transform flex items-center gap-5 p-2 ${
-                            index === activeAdIndex ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95 pointer-events-none'
-                          }`}
-                        >
-                          <div className="relative flex-shrink-0">
-                            <img src={d.image} className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] object-cover shadow-lg border-4 border-white" alt={d.name} />
-                            <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-md">طبيب متميز</div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="font-black text-amber-950 text-lg md:text-xl leading-tight">{d.name}</div>
-                            <div className="inline-block bg-orange-100/50 text-orange-700 text-[10px] md:text-xs font-black px-3 py-1 rounded-full">{d.specialty}</div>
-                            <div className="flex items-center gap-1.5 text-gray-500 font-bold text-[10px] md:text-xs">
-                              <Icons.MapPin />
-                              <span>{d.location}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between items-center px-2">
-                      <div className="flex gap-1.5">
-                        {DOCTOR_ADS.map((_, i) => (
-                          <button 
-                            key={i} 
-                            onClick={() => setActiveAdIndex(i)}
-                            className={`h-1.5 transition-all duration-300 rounded-full ${i === activeAdIndex ? 'w-6 bg-orange-500' : 'w-1.5 bg-orange-200'}`}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length)} className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-amber-950 hover:bg-orange-50 transition-colors"><Icons.ChevronRight /></button>
-                        <button onClick={() => setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length)} className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-amber-950 hover:bg-orange-50 transition-colors"><Icons.ChevronLeft /></button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="w-full md:w-auto">
-                    <a 
-                      href={`https://wa.me/${ADS_WHATSAPP}?text=${encodeURIComponent('مرحباً شركة SCS، أريد الاستفسار عن تفاصيل إضافة إعلان لعيادتي في تطبيق بالهنا.')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center justify-center gap-4 bg-amber-950 text-white p-6 rounded-3xl hover:bg-orange-600 transition-all duration-500 shadow-lg hover:shadow-orange-200/50 w-full md:min-w-[200px]"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                        <Icons.Plus />
-                      </div>
-                      <div className="text-right">
-                        <div className="font-black text-xs">أعلن معنا هنا</div>
-                        <div className="text-[10px] text-orange-300 font-bold">تواصل مع SCS</div>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view === 'cart' && (
-          <div className="max-w-md mx-auto space-y-6 animate-in zoom-in-95 duration-300">
-            <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-amber-50">
-              <h2 className="text-center font-black text-2xl mb-6">ملخص الطلب 🧺</h2>
-              <div className="space-y-3 mb-6">
-                {Object.values(cart).map((i: CartItem) => (
-                  <div key={i.drink.id} className="flex justify-between items-center text-sm font-bold border-b border-amber-50 pb-2">
-                    <span>{i.drink.name} <span className="text-orange-600">×{i.quantity}</span></span>
-                    <span>{i.drink.price * i.quantity} ج.م</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between items-center font-black text-xl text-amber-950">
-                <span>الإجمالي</span>
-                <span className="text-orange-600">{cartTotalPrice} ج.م</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-amber-50 space-y-5">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-amber-900/50 mr-2">1. اختر الدور</label>
-                <select value={floorNumber} onChange={e => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500">
-                  <option value="">اختر الدور...</option>
-                  <option value="0">الدور الأرضي (0)</option>
-                  <option value="1">الدور الأول (1)</option>
-                  <option value="2">الدور الثاني (2)</option>
-                  <option value="3">الدور الثالث (3)</option>
-                </select>
-              </div>
-              
-              {floorNumber && (
-                <div className="space-y-2 animate-in fade-in duration-300">
-                  <label className="text-xs font-black text-amber-900/50 mr-2">2. اختر رقم العيادة</label>
-                  <select value={clinicNumber} onChange={e => setClinicNumber(e.target.value)} className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500">
-                    <option value="">اختر رقم العيادة...</option>
-                    {availableRooms.map(room => <option key={room} value={room}>{room}</option>)}
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-xs font-black text-amber-900/50 mr-2">3. الاسم والبيانات</label>
-                <input value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="اسم الدكتور أو الموظف" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-black text-amber-900/50 mr-2">4. الإضافات والملاحظات</label>
-                <input value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="ملاحظات (مثلاً: سكر زيادة)" className="w-full p-4 rounded-2xl bg-amber-50 border-none font-black text-sm outline-none focus:ring-2 ring-orange-500" />
-              </div>
-              
-              <div className="pt-4 space-y-3">
-                <button onClick={handlePlaceOrder} disabled={isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim()} className={`w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all ${isPlacingOrder || !floorNumber || !clinicNumber || !contactInfo.trim() ? 'bg-gray-200 text-gray-400' : 'bg-orange-600 text-white hover:bg-amber-950 active:scale-95'}`}>
-                  {isPlacingOrder ? 'جاري الإرسال...' : 'تأكيد الطلب 🚀'}
-                </button>
-                <button onClick={handleEmptyCart} className="w-full py-3 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-colors">
-                  إلغاء الطلب وإفراغ السلة
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view === 'admin' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-orange-100 text-center flex flex-col items-center justify-center">
-                <div className="text-[11px] font-black text-orange-500/60 mb-1 flex items-center gap-1"><Icons.Clock /> بانتظار التحضير</div>
-                <div className="text-3xl font-black text-orange-600">{stats.pending}</div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-emerald-100 text-center flex flex-col items-center justify-center">
-                <div className="text-[11px] font-black text-emerald-500/60 mb-1 flex items-center gap-1"><Icons.Check /> تم التوصيل</div>
-                <div className="text-3xl font-black text-emerald-600">{stats.completed}</div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-red-100 text-center flex flex-col items-center justify-center">
-                <div className="text-[11px] font-black text-red-400/60 mb-1 flex items-center gap-1"><Icons.XCircle /> طلبات ملغاة</div>
-                <div className="text-3xl font-black text-red-500">{stats.cancelled}</div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-amber-50 text-center flex flex-col items-center justify-center">
-                <div className="text-[11px] font-black text-amber-900/40 mb-1">إجمالي اليوم</div>
-                <div className="text-3xl font-black text-amber-950">{stats.total}</div>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 border border-amber-100">
-              <div className="text-center md:text-right">
-                <h2 className="font-black text-amber-950 text-lg">مركز الطلبات الحية</h2>
-                <div className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 justify-center md:justify-start">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                  تحديث تلقائي نشط • {lastSyncTime}
-                </div>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {[
-                  { id: 'pending', label: 'الواردة' },
-                  { id: 'completed', label: 'المنتهية' },
-                  { id: 'cancelled', label: 'الملغاة' },
-                  { id: 'all', label: 'الكل' }
-                ].map(f => (
-                  <button key={f.id} onClick={() => setAdminFilter(f.id as any)} className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all ${adminFilter === f.id ? 'bg-orange-600 text-white shadow-md' : 'bg-amber-50 text-amber-900'}`}>
-                    {f.label}
-                  </button>
-                ))}
-                <div className="w-[1px] bg-amber-100 mx-1 hidden md:block"></div>
-                <button 
-                  onClick={sendDailyReportToEmail} 
-                  disabled={isSendingReport}
-                  className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-2 text-xs font-black disabled:opacity-50" 
-                  title="إرسال الجرد لـ Gmail"
-                >
-                  <Icons.Mail /> {isSendingReport ? 'جاري الإرسال..' : 'إرسال الجرد'}
-                </button>
-                <button onClick={downloadReport} className="p-2 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors" title="تحميل تقرير CSV"><Icons.Download /></button>
-                <button onClick={clearHistory} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="مسح الأرشيف"><Icons.Trash /></button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredOrders.length === 0 ? <div className="col-span-full py-20 text-center opacity-20 font-black italic">لا توجد طلبات لعرضها..</div> : filteredOrders.map(o => (
-                <div key={o.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-r-8 transition-all ${o.status === 'pending' ? 'border-orange-500 scale-[1.02] shadow-orange-100' : o.status === 'completed' ? 'border-emerald-200' : 'border-red-100 opacity-60'}`}>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="font-black text-xl text-amber-950 leading-tight">{o.floorNumber === "0" ? "الدور الأرضي" : `الدور ${o.floorNumber}`}</div>
-                      <div className="flex items-center gap-2 mt-1"><span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-lg font-bold">عيادة: {o.clinicNumber}</span></div>
-                      <div className="text-xs font-bold text-orange-600 mt-2 flex items-center gap-1"><Icons.User /> {o.contactInfo}</div>
-                    </div>
-                    <span className="text-[9px] font-black bg-amber-50 px-2 py-1 rounded-lg">#{o.id}</span>
-                  </div>
-                  <div className="bg-amber-50/30 p-4 rounded-2xl mb-5 space-y-2">
-                    {o.items.map((i, idx) => <div key={idx} className="text-sm font-black flex justify-between"><span>{i.drinkName}</span><span className="text-orange-600">x{i.quantity}</span></div>)}
-                    {o.notes && <div className="text-[10px] text-blue-600 pt-3 border-t mt-3 font-bold italic">📝 {o.notes}</div>}
-                  </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="font-black text-lg">{o.totalPrice} ج.م</span>
-                    <div className="flex gap-2">
-                      {o.status === 'pending' ? (
-                        <>
-                          <button onClick={() => updateStatus(o.id, 'completed')} className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg hover:bg-emerald-600 transition-colors flex items-center gap-1">تم <Icons.Check /></button>
-                          <button onClick={() => updateStatus(o.id, 'cancelled')} className="bg-red-50 text-red-600 px-3 py-2 rounded-xl text-[10px] font-black hover:bg-red-100 transition-colors">إلغاء</button>
-                        </>
-                      ) : (
-                        <button onClick={() => updateStatus(o.id, 'pending')} className="text-[10px] font-black text-amber-900/40 underline">إعادة فتح</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
-
-      <footer className="py-6 text-center mt-auto">
-        <p className="text-[10px] font-bold text-gray-400 opacity-60">The website was designed by Dr. Ahmed Elmosalamy</p>
-      </footer>
-
-      {showAdminLogin && (
-        <div className="fixed inset-0 bg-amber-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white p-8 rounded-[2.5rem] w-full max-w-sm text-center shadow-2xl space-y-6">
-            <div className="text-4xl">🔐</div>
-            <h2 className="text-xl font-black">الدخول للمسؤول</h2>
-            <div className="space-y-2">
-              <input type="password" value={adminPassInput} onChange={e => { setAdminPassInput(e.target.value); setLoginError(false); }} onKeyPress={e => e.key === 'Enter' && handleAdminLogin()} autoFocus placeholder="كلمة المرور" className={`w-full p-4 rounded-2xl bg-amber-50 border-2 font-black text-center text-xl outline-none transition-all ${loginError ? 'border-red-500 animate-shake' : 'border-transparent focus:border-orange-500'}`} />
-              {loginError && <p className="text-xs text-red-500 font-bold">كلمة المرور غير صحيحة!</p>}
-            </div>
-            <div className="flex flex-col gap-2">
-              <button onClick={handleAdminLogin} className="bg-amber-950 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-transform">دخول</button>
-              <button onClick={() => { setShowAdminLogin(false); setAdminPassInput(""); setLoginError(false); }} className="text-gray-400 font-bold text-sm py-2">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === 'menu' && Object.keys(cart).length > 0 && (
-        <div className="fixed bottom-6 inset-x-4 max-w-lg mx-auto z-[60] animate-in slide-in-from-bottom-10 duration-500">
-          <button onClick={() => setView('cart')} className="w-full bg-amber-950 text-white p-5 rounded-3xl shadow-2xl flex justify-between items-center border-b-4 border-orange-600 active:scale-95 transition-transform">
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center font-black">{Object.values(cart).reduce((a: number, b: CartItem) => a + b.quantity, 0)}</div>
-              <div className="text-right"><div className="text-xs opacity-60 font-bold">عرض السلة</div><div className="font-black text-lg">إتمام الطلب</div></div>
-            </div>
-            <div className="font-black text-xl">{cartTotalPrice} ج.م</div>
-          </button>
-        </div>
-      )}
-
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-amber-950/70 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white p-10 rounded-[3rem] text-center max-w-sm w-full space-y-8 shadow-[0_30px_60px_rgba(0,0,0,0.5)] border-t-8 border-orange-500">
-            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">☕</div>
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-amber-950">شكراً لك!</h2>
-              <p className="text-sm font-bold text-gray-400">تم تسجيل طلبك في نظام المجمع.</p>
-            </div>
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-[11px] font-bold text-emerald-700">يرجى الضغط على الزر أدناه لإرسال الطلب عبر واتساب لضمان سرعة التوصيل ⬇️</div>
-            <div className="flex flex-col gap-3">
-              <a href={lastOrderLink} target="_blank" rel="noopener noreferrer" onClick={() => setShowSuccessModal(false)} className="bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3">تأكيد عبر واتساب <Icons.WhatsApp /></a>
-              <button onClick={() => setShowSuccessModal(false)} className="text-xs font-black text-gray-400 py-2">إغلاق وتصفح المنيو</button>
-            </div>
-          </div>
-        </div>
-      )}
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slide-in-bottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .animate-in { animation-fill-mode: forwards; }
-        .fade-in { animation-name: fade-in; }
-        .slide-in-from-bottom-4 { animation-name: slide-in-bottom; }
-        .animate-shake { animation: shake 0.2s ease-in-out infinite; }
-      `}</style>
-    </div>
-  );
-};
-
-export default App;
+      setShowSuccessModal(true);
+      // Optional: send

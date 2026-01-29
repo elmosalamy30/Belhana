@@ -1,17 +1,16 @@
-
 import { Drink, DoctorAd } from './types';
 
 export const MENU_ITEMS: Drink[] = [
   // --- المشروبات الساخنة (hot) ---
-  { id: 'h1', name: 'شاي أحمر', price: 10, category: 'hot', image: 'https://images.unsplash.com/photo-1594631252845-29fc4586bd91?q=80&w=400' },
+  { id: 'h1', name: 'شاي أحمر', price: 10, category: 'hot', image: 'https://archive.org/download/2019-2-13-14-10-46-764/__ia_thumb.jpg' },
   { id: 'h2', name: 'شاي فتلة', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=400' },
   { id: 'h3', name: 'شاي كرك', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?q=80&w=400' },
-  { id: 'h4', name: 'يانسون', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1515696423063-0b0930867809?q=80&w=400' },
-  { id: 'h5', name: 'نسكافيه (عادي)', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?q=80&w=400' },
-  { id: 'h6', name: 'شاي بحليب', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=400' },
-  { id: 'h7', name: 'نعناع', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1499028344343-cd173ffc68a9?q=80&w=400' },
-  { id: 'h8', name: 'قرفة بحليب', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400' },
-  { id: 'h9', name: 'كركديه', price: 15, category: 'hot', image: 'https://images.unsplash.com/photo-1623861803926-38292f767115?q=80&w=400' },
+  { id: 'h4', name: 'يانسون', price: 15, category: 'hot', image: 'https://archive.org/download/images-9_20260129/__ia_thumb.jpg' },
+  { id: 'h5', name: 'نسكافيه (عادي)', price: 15, category: 'hot', image: 'https://archive.org/download/images-10_20260129/__ia_thumb.jpg' },
+  { id: 'h6', name: 'شاي بحليب', price: 15, category: 'hot', image: 'https://archive.org/download/29b-7b-8afa-4e-2cf-39e-7a-99937cd-83e-132/__ia_thumb.jpg' },
+  { id: 'h7', name: 'نعناع', price: 15, category: 'hot', image: 'https://archive.org/download/image_5186dfd9-893e-4dee-8b51-d42a62e782f9_202601/__ia_thumb.jpg' },
+  { id: 'h8', name: 'قرفة بحليب', price: 15, category: 'hot', image: 'https://archive.org/download/513_20260129/__ia_thumb.jpg' },
+  { id: 'h9', name: 'كركديه', price: 15, category: 'hot', image: 'https://archive.org/download/tbl_articles_article_33392_345ab6847a8-320d-4ac7-b40b-6afff456d02f/__ia_thumb.jpg' },
 
   // --- القهوة (coffee) ---
   { id: 'q1', name: 'قهوة سادة', price: 20, category: 'coffee', image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=400' },
