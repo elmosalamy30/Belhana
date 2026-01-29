@@ -1,3 +1,4 @@
+
 import { Drink, DoctorAd } from './types';
 
 export const MENU_ITEMS: Drink[] = [
@@ -42,18 +43,29 @@ export const MENU_ITEMS: Drink[] = [
 
 export const DOCTOR_ADS: DoctorAd[] = [
   { 
-    id: 'd4', 
-    name: 'د. محمد أشرف', 
-    specialty: 'طبيب أسنان', 
-    location: 'عيادة 310 - الدور الثالث', 
-    image: 'https://archive.org/download/screenshot-2026-01-26-21-25-23-60-99c-04817c-0de-5652397fc-8b-56c-3b-3817/__ia_thumb.jpg' 
+    id: 'd1', 
+    name: 'د. أحمد سمير', 
+    specialty: 'استشاري أمراض القلب', 
+    location: 'عيادة 101 — الدور الأول', 
+    image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&h=400&auto=format&fit=crop' 
   },
-  { id: 'd1', name: 'د. أحمد علي', specialty: 'استشاري جراحة العظام', location: 'عيادة العظام - الدور الأول', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=300&h=300&auto=format&fit=crop' },
-  { id: 'd2', name: 'د. سارة محمود', specialty: 'أخصائي طب الأطفال', location: 'عيادة الأطفال - الدور الأرضي', image: 'https://images.unsplash.com/photo-1559839734-2b71f153678b?q=80&w=300&h=300&auto=format&fit=crop' },
-  { id: 'd3', name: 'د. محمد حسن', specialty: 'استشاري أمراض الباطنة', location: 'عيادة الباطنة - الدور الثاني', image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=300&h=300&auto=format&fit=crop' },
+  { 
+    id: 'd2', 
+    name: 'د. ليلى حسن', 
+    specialty: 'أخصائي الأمراض الجلدية', 
+    location: 'عيادة 205 — الدور الثاني', 
+    image: 'https://images.unsplash.com/photo-1559839734-2b71f153678b?q=80&w=400&h=400&auto=format&fit=crop' 
+  },
+  { 
+    id: 'd3', 
+    name: 'د. عمر فاروق', 
+    specialty: 'أخصائي طب الأطفال', 
+    location: 'عيادة G04 — الدور الأرضي', 
+    image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&h=400&auto=format&fit=crop' 
+  },
 ];
 
 export const ADMIN_PASSWORD = "123456789";
-export const ORDER_WHATSAPP = "201107223042"; // الرقم الجديد لتأكيد الأوردر
-export const ADS_WHATSAPP = "201107223041";   // رقم التواصل الإعلاني (SCS)
+export const ORDER_WHATSAPP = "201107223042"; 
+export const ADS_WHATSAPP = "201107223041";   
 export const ADMIN_EMAIL = "scs.info.official@gmail.com";
