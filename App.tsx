@@ -140,10 +140,25 @@ const App: React.FC = () => {
   }, [view]);
 
   // Ad Carousel Logic
-  useEffect(() => {
+  const resetAdTimer = () => {
+    if (adCarouselTimerRef.current) clearInterval(adCarouselTimerRef.current);
     adCarouselTimerRef.current = window.setInterval(() => {
       setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
     }, 5000);
+  };
+
+  const nextAd = () => {
+    setActiveAdIndex(prev => (prev + 1) % DOCTOR_ADS.length);
+    resetAdTimer();
+  };
+
+  const prevAd = () => {
+    setActiveAdIndex(prev => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
+    resetAdTimer();
+  };
+
+  useEffect(() => {
+    resetAdTimer();
     return () => { if (adCarouselTimerRef.current) clearInterval(adCarouselTimerRef.current); };
   }, []);
 
@@ -398,34 +413,54 @@ const App: React.FC = () => {
         {view === 'menu' && (
           <div className="space-y-8 animate-fadeIn">
             {/* Ad Carousel */}
-            <div className="relative overflow-hidden rounded-2xl shadow-xl border border-white/50 h-32 md:h-40 bg-white">
-              <div className="absolute inset-0 transition-opacity duration-1000 flex items-center">
+            <div className="relative overflow-hidden rounded-2xl shadow-xl border border-white/50 h-32 md:h-40 bg-white group/carousel">
+              {/* Added px-10 to inner container to push content away from arrows */}
+              <div className="absolute inset-0 transition-opacity duration-1000 flex items-center px-10">
                 <img 
                   src={DOCTOR_ADS[activeAdIndex].image} 
                   alt={DOCTOR_ADS[activeAdIndex].name} 
-                  className="w-24 h-full object-cover"
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-amber-100"
                 />
                 <div className="p-4 flex-1">
                   <div className="text-[10px] text-amber-600 font-bold mb-1">إعلان عيادة</div>
-                  <h3 className="font-bold text-lg leading-tight">{DOCTOR_ADS[activeAdIndex].name}</h3>
-                  <p className="text-xs text-gray-500 mb-1">{DOCTOR_ADS[activeAdIndex].specialty}</p>
-                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                  <h3 className="font-bold text-base md:text-lg leading-tight line-clamp-1">{DOCTOR_ADS[activeAdIndex].name}</h3>
+                  <p className="text-[10px] md:text-xs text-gray-500 mb-1 line-clamp-1">{DOCTOR_ADS[activeAdIndex].specialty}</p>
+                  <p className="text-[9px] md:text-[10px] text-gray-400 flex items-center gap-1">
                     <Icons.MapPin /> {DOCTOR_ADS[activeAdIndex].location}
                   </p>
                 </div>
                 <div className="px-4 border-r flex flex-col justify-center items-center">
                    <button 
                     onClick={() => window.open(`https://wa.me/${ADS_WHATSAPP}`)}
-                    className="p-2 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                    className="p-2 md:p-3 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
                    >
                      <Icons.WhatsApp />
                    </button>
-                   <span className="text-[8px] mt-1 text-emerald-700 font-bold">احجز</span>
+                   <span className="text-[9px] mt-1 text-emerald-700 font-bold">احجز</span>
                 </div>
               </div>
+
+              {/* Navigation Arrows - Adjusted opacity for cleaner look */}
+              <button 
+                onClick={prevAd}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/60 hover:bg-white/90 text-[#2D1B14] shadow-md transition-all opacity-0 group-hover/carousel:opacity-100 z-10 border border-gray-100"
+              >
+                <Icons.ChevronLeft />
+              </button>
+              <button 
+                onClick={nextAd}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/60 hover:bg-white/90 text-[#2D1B14] shadow-md transition-all opacity-0 group-hover/carousel:opacity-100 z-10 border border-gray-100"
+              >
+                <Icons.ChevronRight />
+              </button>
+
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                 {DOCTOR_ADS.map((_, i) => (
-                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeAdIndex ? 'bg-amber-600 w-4' : 'bg-gray-200'}`} />
+                  <button 
+                    key={i} 
+                    onClick={() => { setActiveAdIndex(i); resetAdTimer(); }}
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeAdIndex ? 'bg-amber-600 w-4' : 'bg-gray-200 hover:bg-gray-300'}`} 
+                  />
                 ))}
               </div>
             </div>
