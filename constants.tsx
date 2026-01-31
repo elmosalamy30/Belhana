@@ -61,7 +61,7 @@ export const DOCTOR_ADS: DoctorAd[] = [
     name: 'د. عمر فاروق', 
     specialty: 'أخصائي طب الأطفال', 
     location: 'عيادة G04 — الدور الأرضي', 
-    image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&h=400&auto=format&fit=crop' 
+    image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&h=400&auto=format&fit=crop' 
   },
 ];
 
