@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ADS_WHATSAPP, ORDER_WHATSAPP, ADMIN_EMAIL } from './constants';
-import { Drink, Order, OrderItem, CLINICS, DoctorAd, DrinkCategory } from './types';
+import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ORDER_WHATSAPP, ADMIN_EMAIL } from './constants';
+import { Drink, Order, OrderItem, DrinkCategory } from './types';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
 const GLOBAL_SYNC_ID = "bal_hana_v7_final_secure_sync_2025"; 
@@ -23,18 +23,15 @@ const COLORS = {
 };
 
 const Icons = {
-  Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
   User: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-  Mail: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
   WhatsApp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
-  Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   MapPin: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
   ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
   Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   Minus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   ShoppingCart: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
-  ChevronLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  ChevronRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  Stethoscope: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2a.3.3 0 0 0-.2.3Z"/><path d="M10 2v2"/><path d="M14 2v2"/><path d="M3 10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a5 5 0 0 1-10 0v-2"/><path d="M11 15v2a3 3 0 1 1-6 0v-2"/></svg>
 };
 
 interface CartItem { drink: Drink; quantity: number; }
@@ -64,10 +61,10 @@ const App: React.FC = () => {
   const [adminPassInput, setAdminPassInput] = useState("");
   const [lastSyncTime, setLastSyncTime] = useState("-");
   const [activeAdIndex, setActiveAdIndex] = useState(0);
-  
-  // Swipe states
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
+
+  // Swipe logic
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   const filteredMenuItems = useMemo(() => {
     if (activeCategory === 'all') return MENU_ITEMS;
@@ -75,15 +72,10 @@ const App: React.FC = () => {
   }, [activeCategory]);
 
   const availableRooms = useMemo(() => {
-    if (floorNumber === "0") {
-      return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
-    } else if (floorNumber === "1") {
-      return Array.from({ length: 25 }, (_, i) => `F${(i + 1).toString().padStart(2, '0')}`);
-    } else if (floorNumber === "2") {
-      return Array.from({ length: 25 }, (_, i) => `S${(i + 1).toString().padStart(2, '0')}`);
-    } else if (floorNumber === "3") {
-      return Array.from({ length: 25 }, (_, i) => (301 + i).toString());
-    }
+    if (floorNumber === "0") return Array.from({ length: 21 }, (_, i) => `G${(i + 1).toString().padStart(2, '0')}`);
+    if (floorNumber === "1") return Array.from({ length: 25 }, (_, i) => `F${(i + 1).toString().padStart(2, '0')}`);
+    if (floorNumber === "2") return Array.from({ length: 25 }, (_, i) => `S${(i + 1).toString().padStart(2, '0')}`);
+    if (floorNumber === "3") return Array.from({ length: 25 }, (_, i) => (301 + i).toString());
     return [];
   }, [floorNumber]);
 
@@ -116,9 +108,20 @@ const App: React.FC = () => {
   }, [view]);
 
   const nextAd = () => setActiveAdIndex((prev) => (prev + 1) % DOCTOR_ADS.length);
-  
+  const prevAd = () => setActiveAdIndex((prev) => (prev - 1 + DOCTOR_ADS.length) % DOCTOR_ADS.length);
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.targetTouches[0].clientX; };
+  const handleTouchMove = (e: React.TouchEvent) => { touchEndX.current = e.targetTouches[0].clientX; };
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 50) nextAd();
+    if (distance < -50) prevAd();
+    touchStartX.current = 0; touchEndX.current = 0;
+  };
+
   useEffect(() => {
-    const timer = setInterval(nextAd, 6000);
+    const timer = setInterval(nextAd, 8000);
     return () => clearInterval(timer);
   }, []);
 
@@ -152,29 +155,27 @@ const App: React.FC = () => {
       const currentCartItems = Object.values(cart) as CartItem[];
       const itemsList = currentCartItems.map((i: CartItem) => `${i.drink.name} (×${i.quantity})`).join(', ');
       
-      // 1. Send to FormSubmit (Email Archive) via AJAX
-      const formData = {
+      // 1. Send to FormSubmit (Email Inventory Archive)
+      const emailBody = {
         _subject: `جرد طلبات بالهنا - طلب #${orderId}`,
-        "رقم الطلب": orderId,
-        "الدور": floorNumber,
-        "العيادة": clinicNumber,
-        "الاسم": contactInfo,
+        "رقم الدور": floorNumber,
+        "رقم العيادة": clinicNumber,
+        "اسم صاحب الطلب": contactInfo,
         "الطلبات": itemsList,
-        "الإجمالي": `${cartTotalPrice} ج.م`,
-        "الملاحظات": orderNote || "لا يوجد",
-        _template: "table",
+        "السعر الإجمالي": `${cartTotalPrice} ج.م`,
+        "ملاحظات": orderNote || "لا يوجد",
         _captcha: "false"
       };
 
       try {
         await fetch(`https://formsubmit.co/ajax/${ADMIN_EMAIL}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(emailBody)
         });
-      } catch (e) { console.warn("Email archive error, continuing..."); }
+      } catch (e) { console.error("FormSubmit Archive Failed"); }
 
-      // 2. Open WhatsApp for Live Delivery
+      // 2. Open WhatsApp for Action
       const whatsappMsg = `*طلب جديد من بالهنا (#${orderId})*\n\n` +
                         `*الموقع:*\n` +
                         `- الدور: ${floorNumber}\n` +
@@ -222,17 +223,17 @@ const App: React.FC = () => {
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-4">
                <button onClick={() => setView('menu')} className="p-2 rounded-full bg-white shadow-sm text-amber-600"><Icons.ArrowRight /></button>
-               <h1 className="text-2xl font-black text-[#2D1B14]">لوحة الجرد والطلبات</h1>
+               <h1 className="text-2xl font-black text-[#2D1B14]">لوحة الجرد المركزية</h1>
             </div>
             <p className="text-xs font-bold text-amber-700">آخر مزامنة: {lastSyncTime}</p>
           </div>
           <div className="space-y-4">
-             {orders.length === 0 ? <div className="p-20 text-center bg-white rounded-3xl text-gray-400">لا يوجد بيانات حالياً</div> : 
+             {orders.length === 0 ? <div className="p-20 text-center bg-white rounded-3xl text-gray-400">لا يوجد سجلات حالياً</div> : 
              orders.slice().reverse().map(o => (
                <div key={o.id} className="bg-white p-6 rounded-3xl shadow-sm border border-amber-50">
                   <div className="flex justify-between mb-4">
                     <div>
-                      <span className="text-[10px] font-black uppercase text-amber-600">ID: #{o.id}</span>
+                      <span className="text-[10px] font-black uppercase text-amber-600">كود الجرد: #{o.id}</span>
                       <h3 className="font-black text-lg">{o.clinicName}</h3>
                       <p className="text-xs text-gray-500">الدور {o.floorNumber} - عيادة {o.clinicNumber}</p>
                     </div>
@@ -285,25 +286,50 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-5 py-8">
         {view === 'menu' && (
           <div className="space-y-10 animate-fadeIn">
-            {/* Carousel / Ads */}
-            <div className="relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-white h-44 bg-white group">
-              <div className="absolute inset-0 flex items-center transition-all duration-700 ease-in-out">
+            
+            {/* Modern Doctor Ads Carousel */}
+            <div 
+              className="relative overflow-hidden rounded-[2.5rem] shadow-2xl bg-white h-52 group touch-pan-y"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="absolute inset-0 flex items-center">
                 {DOCTOR_ADS.map((ad, idx) => (
-                  <div key={ad.id} className={`absolute inset-0 flex items-center px-6 md:px-12 transition-all duration-500 ${idx === activeAdIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}>
+                  <div 
+                    key={ad.id} 
+                    className={`absolute inset-0 flex items-center px-6 md:px-12 transition-all duration-700 ease-in-out ${idx === activeAdIndex ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-full scale-95'}`}
+                  >
                     <div className="relative flex-shrink-0">
-                      <img src={ad.image} className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover border-4 border-amber-100 shadow-xl" />
+                      <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full"></div>
+                      <img src={ad.image} className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-2xl relative z-10" />
                     </div>
-                    <div className="pr-6 flex-1">
-                      <div className="text-[10px] text-amber-600 font-black mb-1">مجمع هنا الطبي</div>
-                      <h3 className="font-black text-lg md:text-2xl text-[#2D1B14] leading-tight mb-1">{ad.name}</h3>
-                      <p className="text-[13px] text-gray-500 font-bold opacity-80 mb-2">{ad.specialty}</p>
-                      <div className="inline-flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100 text-[11px] font-black text-amber-800">
-                         <Icons.MapPin /> {ad.location}
+                    <div className="pr-8 flex-1">
+                      <div className="inline-flex items-center gap-1.5 bg-amber-50 px-3 py-1 rounded-full mb-2">
+                        <Icons.Stethoscope />
+                        <span className="text-[11px] font-black text-amber-800 uppercase tracking-tighter">نخبة مجمع هنا</span>
+                      </div>
+                      <h3 className="font-black text-xl md:text-2xl text-[#2D1B14] mb-1">{ad.name}</h3>
+                      <p className="text-[14px] text-gray-500 font-bold mb-3">{ad.specialty}</p>
+                      <div className="flex items-center gap-2 text-amber-700">
+                         <Icons.MapPin />
+                         <span className="text-[12px] font-black">{ad.location}</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+              
+              {/* Carousel Indicators */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2.5">
+                {DOCTOR_ADS.map((_, i) => (
+                  <button key={i} onClick={() => setActiveAdIndex(i)} className={`h-2 rounded-full transition-all duration-500 ${i === activeAdIndex ? 'bg-amber-600 w-8' : 'bg-amber-100 w-2'}`} />
+                ))}
+              </div>
+
+              {/* Swipe Hints */}
+              <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white/30 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white/30 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </div>
 
             {/* Categories */}
@@ -345,63 +371,65 @@ const App: React.FC = () => {
           <div className="max-w-2xl mx-auto space-y-8 animate-fadeIn">
             <div className="flex items-center gap-5">
               <button onClick={() => setView('menu')} className={`p-3 rounded-full ${COLORS.surface} border border-amber-100 text-amber-700 shadow-md active:scale-90`}><Icons.ArrowRight /></button>
-              <h2 className="text-2xl font-black text-[#2D1B14]">مراجعة الطلب</h2>
+              <h2 className="text-2xl font-black text-[#2D1B14]">قائمة طلباتك</h2>
             </div>
 
             {cartTotalItems === 0 ? (
               <div className="p-20 text-center rounded-[3rem] bg-white border-4 border-dashed border-amber-50 shadow-sm">
-                <h3 className="font-black text-gray-400 text-lg">سلتك فارغة</h3>
-                <button onClick={() => setView('menu')} className={`mt-8 py-4 px-12 rounded-2xl ${COLORS.primary} text-white font-black`}>تصفح المنيو</button>
+                <h3 className="font-black text-gray-400 text-lg">سلتك بانتظار مشروباتك</h3>
+                <button onClick={() => setView('menu')} className={`mt-8 py-4 px-12 rounded-2xl ${COLORS.primary} text-white font-black shadow-xl`}>تصفح المنيو</button>
               </div>
             ) : (
               <div className="space-y-6">
+                {/* Cart Summary Card */}
                 <div className="bg-white rounded-[2.5rem] shadow-xl border border-amber-50 p-8">
                   <div className="space-y-5">
                     {(Object.values(cart) as CartItem[]).map((item: CartItem) => (
                       <div key={item.drink.id} className="flex justify-between items-center py-4 border-b border-amber-50 last:border-0">
                         <div className="flex flex-col">
                            <span className="font-black text-base text-[#2D1B14]">{item.drink.name}</span>
-                           <span className="text-[11px] text-gray-400 font-bold uppercase">× {item.quantity}</span>
+                           <span className="text-[11px] text-gray-400 font-bold">× {item.quantity}</span>
                         </div>
                         <span className="text-amber-700 font-black text-lg">{item.drink.price * item.quantity} ج.م</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-8 pt-8 border-t-2 border-dashed border-amber-100 flex justify-between items-center font-black text-2xl text-[#2D1B14]">
-                    <span className="text-base text-gray-400">الإجمالي</span>
+                    <span className="text-base text-gray-400">الإجمالي النهائي</span>
                     <span>{cartTotalPrice} <span className="text-xs">ج.م</span></span>
                   </div>
                 </div>
 
+                {/* Delivery Info Card */}
                 <div className="bg-white rounded-[2.5rem] shadow-xl border border-amber-50 p-8 space-y-6">
                   <div className="flex items-center gap-3">
                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center"><Icons.MapPin /></div>
-                     <h3 className="font-black text-lg text-[#2D1B14]">بيانات التوصيل (للجرد)</h3>
+                     <h3 className="font-black text-lg text-[#2D1B14]">بيانات الموقع والطلب</h3>
                   </div>
                   
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <select value={floorNumber} onChange={(e) => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500">
+                        <select value={floorNumber} onChange={(e) => { setFloorNumber(e.target.value); setClinicNumber(""); }} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 appearance-none">
                             <option value="">اختر الدور...</option>
-                            <option value="0">الأرضي (0)</option>
-                            <option value="1">الأول (1)</option>
-                            <option value="2">الثاني (2)</option>
-                            <option value="3">الثالث (3)</option>
+                            <option value="0">الدور الأرضي (0)</option>
+                            <option value="1">الدور الأول (1)</option>
+                            <option value="2">الدور الثاني (2)</option>
+                            <option value="3">الدور الثالث (3)</option>
                         </select>
-                        <select disabled={!floorNumber} value={clinicNumber} onChange={(e) => setClinicNumber(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 disabled:opacity-30">
+                        <select disabled={!floorNumber} value={clinicNumber} onChange={(e) => setClinicNumber(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500 disabled:opacity-30 appearance-none">
                             <option value="">رقم العيادة...</option>
                             {availableRooms.map(room => <option key={room} value={room}>{room}</option>)}
                         </select>
                     </div>
-                    <input type="text" placeholder="اسم صاحب الطلب" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500" />
-                    <textarea placeholder="إضافات (سكر، نوع حليب، إلخ...)" value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black h-24 outline-none focus:border-amber-500 resize-none" />
+                    <input type="text" placeholder="اسم صاحب الطلب / العيادة" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black outline-none focus:border-amber-500" />
+                    <textarea placeholder="إضافات وملاحظات الطلب (سكر، نوع حليب...)" value={orderNote} onChange={(e) => setOrderNote(e.target.value)} className="w-full p-4 rounded-2xl border-2 border-amber-50 bg-amber-50/20 text-[13px] font-black h-24 outline-none focus:border-amber-500 resize-none" />
                   </div>
                   
                   <button onClick={handleConfirmOrder} disabled={isPlacingOrder} className={`w-full py-5 rounded-2xl text-white font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${COLORS.primary} disabled:opacity-50`}>
                     {isPlacingOrder ? (
                         <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                        <>تأكيد الطلب (واتس + ميل) <Icons.WhatsApp /></>
+                        <>تأكيد الطلب <Icons.Check /></>
                     )}
                   </button>
                 </div>
@@ -411,13 +439,13 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Floating Action Button */}
+      {/* Floating Checkout Button */}
       {view === 'menu' && cartTotalItems > 0 && (
         <div className="fixed bottom-6 left-6 right-6 z-50 animate-bounceIn">
-          <button onClick={() => setView('cart')} className={`max-w-2xl mx-auto w-full ${COLORS.primary} text-white p-5 rounded-[2rem] shadow-2xl flex items-center justify-between`}>
+          <button onClick={() => setView('cart')} className={`max-w-2xl mx-auto w-full ${COLORS.primary} text-white p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between`}>
             <div className="flex items-center gap-4">
                 <div className="bg-amber-500 text-white px-4 py-1.5 rounded-2xl font-black text-base">{cartTotalItems}</div>
-                <span className="font-black text-base">مراجعة الطلب</span>
+                <span className="font-black text-base uppercase">استكمال الطلب</span>
             </div>
             <div className="font-black text-xl">{cartTotalPrice} ج.م</div>
           </button>
@@ -428,10 +456,10 @@ const App: React.FC = () => {
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-[#2D1B14]/80 backdrop-blur-md animate-fadeIn">
           <div className="bg-white rounded-[3.5rem] p-12 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6"><Icons.Check /></div>
-            <h2 className="text-2xl font-black mb-3 text-[#2D1B14]">تم التنفيذ!</h2>
-            <p className="text-gray-500 text-[14px] font-bold mb-8">تم إرسال الطلب عبر واتساب وأرشفته في سجل الإدارة بنجاح.</p>
-            <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-5 rounded-[2rem] ${COLORS.primary} text-white font-black shadow-2xl`}>العودة للرئيسية</button>
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 scale-125"><Icons.Check /></div>
+            <h2 className="text-2xl font-black mb-3 text-[#2D1B14]">تمت العملية!</h2>
+            <p className="text-gray-500 text-[14px] font-bold mb-8">تم تأكيد طلبك وأرشفته بنجاح. سنصلك في أسرع وقت.</p>
+            <button onClick={() => { setShowSuccessModal(false); setView('menu'); }} className={`w-full py-5 rounded-[2rem] ${COLORS.primary} text-white font-black shadow-2xl transition-all active:scale-95`}>العودة للرئيسية</button>
           </div>
         </div>
       )}
@@ -453,7 +481,7 @@ const App: React.FC = () => {
             }} className="space-y-5">
               <input autoFocus type="password" value={adminPassInput} onChange={(e) => setAdminPassInput(e.target.value)} className="w-full p-5 rounded-[1.5rem] border-2 border-amber-50 bg-amber-50/20 font-black text-center tracking-[0.5em] focus:border-amber-500 outline-none" placeholder="********" />
               <button type="submit" className={`w-full py-5 rounded-[1.5rem] ${COLORS.primary} text-white font-black shadow-2xl`}>دخول</button>
-              <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full py-2 text-gray-400 font-bold text-xs uppercase">إغلاق</button>
+              <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full py-2 text-gray-400 font-bold text-xs">إغلاق</button>
             </form>
           </div>
         </div>
@@ -461,7 +489,7 @@ const App: React.FC = () => {
 
       <footer className="mt-auto py-12 text-center opacity-30">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-900">بالهنا — مجمع هنا الطبي</p>
-          <p className="text-[9px] font-bold text-amber-800">Designed by Dr. Ahmed Elmosalamy</p>
+          <p className="text-[9px] font-bold text-amber-800">Developed by Dr. Ahmed Elmosalamy</p>
       </footer>
 
       <style>{`
