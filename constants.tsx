@@ -1,6 +1,12 @@
 
 import { Drink, DoctorAd } from './types';
 
+/**
+ * تحذير: لا تقم بتغيير القيمة أدناه إلى false إلا بأمر مباشر من المستخدم.
+ * هذا المتغير يتحكم في الوصول الشامل للموقع.
+ */
+export const IS_SITE_CLOSED = true;
+
 export const MENU_ITEMS: Drink[] = [
   // --- المشروبات الساخنة (hot) ---
   { id: 'h1', name: 'شاي أحمر', price: 10, category: 'hot', image: 'https://archive.org/download/2019-2-13-14-10-46-764/__ia_thumb.jpg' },
