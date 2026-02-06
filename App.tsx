@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ORDER_WHATSAPP, ADMIN_EMAIL, IS_SITE_CLOSED } from './constants';
 import { Drink, Order, OrderItem, DrinkCategory } from './types';
+import { MENU_ITEMS, DOCTOR_ADS, ADMIN_PASSWORD, ORDER_WHATSAPP, ADMIN_EMAIL, IS_SITE_CLOSED } from './constants';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 const LOGO_URL = "https://archive.org/download/t-401769435886279/__ia_thumb.jpg";
 const GLOBAL_SYNC_ID = "bal_hana_v7_final_secure_sync_2025"; 
@@ -97,7 +97,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (IS_SITE_CLOSED) return; // لا حاجة للمزامنة إذا كان مغلقاً
+    if (IS_SITE_CLOSED) return; 
     const fetchOrders = async () => {
       try {
         const res = await fetch(`${API_URL}?cb=${Date.now()}`, { cache: 'no-store' });
@@ -225,7 +225,6 @@ const App: React.FC = () => {
     }
   };
 
-  // حارس الموقع: شاشة "الموقع مغلق"
   if (IS_SITE_CLOSED) {
     return (
       <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-6 ${COLORS.primary} overflow-hidden`} dir="rtl">
@@ -261,9 +260,9 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <footer className="pt-8 opacity-20">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500 mb-1">SECURE ACCESS ONLY</p>
-            <p className="text-[8px] font-bold text-white">SCS Official Management Control</p>
+          <footer className="pt-8 opacity-40">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500 mb-2">SECURE ACCESS ONLY</p>
+            <p className="text-[9px] font-extrabold text-white uppercase tracking-widest">Full Management by Dr. Ahmed Elmosalamy</p>
           </footer>
         </div>
 
@@ -278,10 +277,8 @@ const App: React.FC = () => {
     );
   }
 
-  // المحتوى أدناه لا يمكن الوصول إليه برمجياً طالما IS_SITE_CLOSED = true
   return (
     <div className={`min-h-screen ${COLORS.bgLight} flex flex-col pb-24 font-sans`} dir="rtl">
-      {/* ... بقية الكود الأساسي ... */}
       <header className={`sticky top-0 z-[60] ${COLORS.primary} text-white shadow-xl`}>
         <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -364,7 +361,16 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* مودالات الإدارة والنجاح ... */}
+      <footer className="mt-auto py-10 text-center opacity-40 px-6">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-900 mb-2">بالهنا — مجمع هنا الطبي</p>
+          <p className="text-[9px] font-extrabold text-amber-800 uppercase tracking-widest">Full Management by Dr. Ahmed Elmosalamy</p>
+      </footer>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+      `}</style>
     </div>
   );
 };
