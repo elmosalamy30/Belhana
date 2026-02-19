@@ -5,7 +5,7 @@ import { Drink, DoctorAd } from './types';
  * تحذير: لا تقم بتغيير القيمة أدناه إلى false إلا بأمر مباشر من المستخدم.
  * هذا المتغير يتحكم في الوصول الشامل للموقع.
  */
-export const IS_SITE_CLOSED = true;
+export const IS_SITE_CLOSED = false;
 
 export const MENU_ITEMS: Drink[] = [
   // --- المشروبات الساخنة (hot) ---
